@@ -19,9 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import mx.utng.cala.wearos.presentation.viewmodel.MetaCompletada
 import mx.utng.cala.wearos.presentation.theme.*
@@ -31,6 +34,8 @@ fun MetaCompletadaScreen(
     meta: MetaCompletada,
     onAceptar: () -> Unit
 ) {
+    val listState = rememberScalingLazyListState()
+
     val (icono, label, unidad) = when (meta.tipoMeta) {
         mx.utng.cala.core.data.model.TipoMeta.DISTANCIA ->
             Triple(Icons.Filled.LocationOn, "Distancia", "km")
@@ -42,85 +47,99 @@ fun MetaCompletadaScreen(
             Triple(Icons.Filled.Timer, "Tiempo", "min")
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
+    ScreenScaffold(scrollState = listState) {
+        ScalingLazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 28.dp),
+                .background(Color.Black),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            contentPadding = PaddingValues(
+                start = 10.dp,
+                end = 10.dp,
+                top = 24.dp,
+                bottom = 40.dp
+            )
         ) {
-            Icon(
-                imageVector = Icons.Filled.EmojiEvents,
-                contentDescription = "Trofeo",
-                tint = Primary,
-                modifier = Modifier.size(36.dp)
-            )
+            item {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = "Trofeo",
+                    tint = Primary,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
 
-            Text(
-                text = "¡Meta completada!",
-                color = OnBackground,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+            item {
+                Text(
+                    text = "¡Meta completada!",
+                    color = OnBackground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Surface.copy(alpha = 0.6f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+            item {
+                Row(
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Primary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Surface.copy(alpha = 0.6f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = icono,
-                        contentDescription = label,
-                        tint = Primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = label,
-                        color = Color.Gray,
-                        fontSize = 9.sp
-                    )
-                    Text(
-                        text = "${meta.valorObjetivo.toInt()} $unidad",
-                        color = OnBackground,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Primary.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icono,
+                            contentDescription = label,
+                            tint = Primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = label,
+                            color = Color.Gray,
+                            fontSize = 9.sp
+                        )
+                        Text(
+                            text = "${meta.valorObjetivo.toInt()} $unidad",
+                            color = OnBackground,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 
-            Button(
-                onClick = onAceptar,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary)
-            ) {
-                Text(
-                    text = "ACEPTAR",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
+            item {
+                Spacer(Modifier.height(12.dp))
+            }
+
+            item {
+                Button(
+                    onClick = onAceptar,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) {
+                    Text(
+                        text = "ACEPTAR",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }

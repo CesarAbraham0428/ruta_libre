@@ -38,6 +38,7 @@ fun WearNavGraph(
                 pasos = uiState.pasos,
                 calorias = uiState.calorias,
                 tiempoSegundos = uiState.tiempo,
+                estaActivo = uiState.estaActivo,
                 onFinalizar = {
                     viewModel.finalizar(1) {
                         val currentState = viewModel.uiState.value

@@ -39,21 +39,31 @@ class WearEntrenamientoViewModel : ViewModel() {
     private var fechaInicioMillis: Long = 0L
 
     fun iniciar(idUsuario: Int) {
+        // ACTIVACIÓN INSTANTÁNEA LOCAL
+        fechaInicioMillis = System.currentTimeMillis()
+        _uiState.value = WearEntrenamientoUiState(
+            estaActivo = true,
+            idEntrenamiento = -1 // ID temporal para que 'finalizar' funcione siempre
+        )
+
         viewModelScope.launch {
             entrenamientoRepository.iniciar(idUsuario).fold(
                 onSuccess = {
-                    fechaInicioMillis = System.currentTimeMillis()
-                    _uiState.value = WearEntrenamientoUiState(
-                        estaActivo = true,
+                    _uiState.value = _uiState.value.copy(
                         idEntrenamiento = it.idEntrenamiento
                     )
                 },
-                onFailure = { /* manejar error */ }
+                onFailure = { 
+                    // Si falla el servidor, nos quedamos con el ID temporal
+                    // para permitir que el usuario pueda finalizar la sesión.
+                }
             )
         }
     }
 
     fun actualizarMetricas(pasos: Int, calorias: Int, distancia: Double) {
+        if (!_uiState.value.estaActivo) return
+
         val tiempoSegundos = if (fechaInicioMillis > 0) {
             ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
         } else 0
@@ -67,32 +77,42 @@ class WearEntrenamientoViewModel : ViewModel() {
 
     fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {
         val state = _uiState.value
-        val idEntrenamiento = state.idEntrenamiento ?: return
+        
+        // DETENCIÓN INSTANTÁNEA LOCAL
+        _uiState.value = _uiState.value.copy(estaActivo = false)
+        
+        val idEntrenamiento = state.idEntrenamiento
+        if (idEntrenamiento == null) {
+            onResult()
+            return
+        }
+
         val tiempo = if (fechaInicioMillis > 0) {
             ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
         } else state.tiempo
 
         viewModelScope.launch {
-            entrenamientoRepository.finalizar(
-                idEntrenamiento = idEntrenamiento,
-                pasos = state.pasos,
-                calorias = state.calorias,
-                distancia = state.distancia,
-                tiempo = tiempo,
-                coordenadas = emptyList(),
-                puntoInicio = Punto(0.0, 0.0),
-                puntoFin = Punto(0.0, 0.0)
-            ).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        estaActivo = false,
-                        tiempo = tiempo
-                    )
-                    checkMetasCompletadas(idUsuario)
-                    onResult()
-                },
-                onFailure = { /* manejar error */ }
-            )
+            // Solo llamamos al servidor si el ID no es el temporal (-1)
+            if (idEntrenamiento != -1) {
+                entrenamientoRepository.finalizar(
+                    idEntrenamiento = idEntrenamiento,
+                    pasos = state.pasos,
+                    calorias = state.calorias,
+                    distancia = state.distancia,
+                    tiempo = tiempo,
+                    coordenadas = emptyList(),
+                    puntoInicio = Punto(0.0, 0.0),
+                    puntoFin = Punto(0.0, 0.0)
+                ).fold(
+                    onSuccess = {
+                        checkMetasCompletadas(idUsuario)
+                        onResult()
+                    },
+                    onFailure = { onResult() }
+                )
+            } else {
+                onResult()
+            }
         }
     }
 

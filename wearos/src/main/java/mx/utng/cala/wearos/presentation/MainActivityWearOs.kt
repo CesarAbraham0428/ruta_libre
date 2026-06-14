@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
+import androidx.wear.compose.material3.AppScaffold
 import mx.utng.cala.wearos.presentation.navigation.WearNavGraph
 import mx.utng.cala.wearos.presentation.theme.RutaLibreTheme
 
@@ -12,8 +13,10 @@ class MainActivityWearOs : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             RutaLibreTheme {
-                val navController = rememberNavController()
-                WearNavGraph(navController = navController)
+                AppScaffold {
+                    val navController = rememberNavController()
+                    WearNavGraph(navController = navController)
+                }
             }
         }
     }

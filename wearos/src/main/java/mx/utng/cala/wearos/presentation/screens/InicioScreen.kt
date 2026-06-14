@@ -19,10 +19,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.ScreenScaffold
 import mx.utng.cala.wearos.presentation.navigation.WearRoutes
 import mx.utng.cala.wearos.presentation.theme.*
 
@@ -31,96 +34,111 @@ fun InicioScreen(
     navController: NavController,
     onIniciar: () -> Unit = {}
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
+    val listState = rememberScalingLazyListState()
+
+    ScreenScaffold(scrollState = listState) {
+        ScalingLazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 28.dp),
+                .background(Color.Black),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Icon(
-                imageVector = Icons.Filled.DirectionsRun,
-                contentDescription = "Correr",
-                tint = Primary,
-                modifier = Modifier.size(24.dp)
+            contentPadding = PaddingValues(
+                start = 10.dp,
+                end = 10.dp,
+                top = 24.dp,
+                bottom = 40.dp
             )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = "Ruta Libre",
-                    color = OnBackground,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "00:00:00",
-                    color = OnBackground,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = "Tiempo en actividad",
-                    color = Color.Gray,
-                    fontSize = 9.sp,
-                    textAlign = TextAlign.Center
+        ) {
+            item {
+                Icon(
+                    imageVector = Icons.Filled.DirectionsRun,
+                    contentDescription = "Correr",
+                    tint = Primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                MetricRow(
-                    icon = Icons.Filled.LocationOn,
-                    iconColor = MetricDistancia,
-                    label = "Distancia",
-                    value = "0.00",
-                    unit = "km"
-                )
-                MetricRow(
-                    icon = Icons.Filled.DirectionsWalk,
-                    iconColor = MetricPasos,
-                    label = "Pasos",
-                    value = "0",
-                    unit = ""
-                )
-                MetricRow(
-                    icon = Icons.Filled.LocalFireDepartment,
-                    iconColor = MetricCalorias,
-                    label = "Calorías",
-                    value = "0",
-                    unit = "kcal"
-                )
+            item {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Ruta Libre",
+                        color = OnBackground,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "00:00:00",
+                        color = OnBackground,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Tiempo en actividad",
+                        color = Color.Gray,
+                        fontSize = 9.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
-            Button(
-                onClick = {
-                    onIniciar()
-                    navController.navigate(WearRoutes.METRICAS)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary)
-            ) {
-                Text(
-                    text = "INICIAR",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    MetricRow(
+                        icon = Icons.Filled.LocationOn,
+                        iconColor = MetricDistancia,
+                        label = "Distancia",
+                        value = "0.00",
+                        unit = "km"
+                    )
+                    MetricRow(
+                        icon = Icons.Filled.DirectionsWalk,
+                        iconColor = MetricPasos,
+                        label = "Pasos",
+                        value = "0",
+                        unit = ""
+                    )
+                    MetricRow(
+                        icon = Icons.Filled.LocalFireDepartment,
+                        iconColor = MetricCalorias,
+                        label = "Calorías",
+                        value = "0",
+                        unit = "kcal"
+                    )
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(8.dp))
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        onIniciar()
+                        navController.navigate(WearRoutes.METRICAS)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) {
+                    Text(
+                        text = "INICIAR",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
