@@ -42,79 +42,86 @@ fun MetaCompletadaScreen(
             Triple(Icons.Filled.Timer, "Tiempo", "min")
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Filled.EmojiEvents,
-            contentDescription = "Trofeo",
-            tint = Primary,
-            modifier = Modifier.size(48.dp)
-        )
-
-        Text(
-            text = "¡Meta completada!",
-            color = OnBackground,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Surface)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Primary.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icono,
-                    contentDescription = label,
-                    tint = Primary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = label,
-                    color = Color.Gray,
-                    fontSize = 11.sp
-                )
-                Text(
-                    text = "${meta.valorObjetivo.toInt()} $unidad",
-                    color = OnBackground,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Button(
-            onClick = onAceptar,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Primary)
-        ) {
-            Text(
-                text = "ACEPTAR",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+            Icon(
+                imageVector = Icons.Filled.EmojiEvents,
+                contentDescription = "Trofeo",
+                tint = Primary,
+                modifier = Modifier.size(36.dp)
             )
+
+            Text(
+                text = "¡Meta completada!",
+                color = OnBackground,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Surface.copy(alpha = 0.6f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Primary.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icono,
+                        contentDescription = label,
+                        tint = Primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = label,
+                        color = Color.Gray,
+                        fontSize = 9.sp
+                    )
+                    Text(
+                        text = "${meta.valorObjetivo.toInt()} $unidad",
+                        color = OnBackground,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Button(
+                onClick = onAceptar,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary)
+            ) {
+                Text(
+                    text = "ACEPTAR",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }

@@ -139,6 +139,8 @@ app/src/main/java/mx/utng/cala/rutalibre/
 
 ### `:wearos` — Smartwatch (Wear OS)
 
+> Documentación detallada del módulo → [`source/docs/DocumentacionWearOs.md`](source/docs/DocumentacionWearOs.md)
+
 ```
 wearos/src/main/java/mx/utng/cala/wearos/
 └── presentation/
