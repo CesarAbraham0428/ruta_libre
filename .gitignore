@@ -1,3 +1,12 @@
+# Archivos de build de Android/Gradle
+build/
+.gradle/
+.idea/
+*.iml
+*.class
+*.apk
+*.log
+
 *.iml
 .gradle
 /local.properties
