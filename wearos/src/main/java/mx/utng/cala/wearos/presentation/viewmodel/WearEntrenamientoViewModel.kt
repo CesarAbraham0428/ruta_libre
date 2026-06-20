@@ -1,12 +1,14 @@
 package mx.utng.cala.wearos.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.health.services.client.data.CumulativeDataPoint
+import androidx.health.services.client.data.DataType
+import androidx.health.services.client.data.DataPoint
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import mx.utng.cala.core.data.dto.response.MetaResponse
-import mx.utng.cala.core.data.model.Coordenada
 import mx.utng.cala.core.data.model.Punto
 import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
@@ -29,34 +31,45 @@ data class WearEntrenamientoUiState(
     val metaActual: MetaCompletada? = null
 )
 
-class WearEntrenamientoViewModel : ViewModel() {
+class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val entrenamientoRepository = EntrenamientoRepository()
     private val metaRepository = MetaRepository()
+    private val healthServicesManager = HealthServicesManager(application)
     private val _uiState = MutableStateFlow(WearEntrenamientoUiState())
     val uiState: StateFlow<WearEntrenamientoUiState> = _uiState
 
     private var fechaInicioMillis: Long = 0L
 
     fun iniciar(idUsuario: Int) {
-        // ACTIVACIÓN INSTANTÁNEA LOCAL
         fechaInicioMillis = System.currentTimeMillis()
         _uiState.value = WearEntrenamientoUiState(
             estaActivo = true,
-            idEntrenamiento = -1 // ID temporal para que 'finalizar' funcione siempre
+            idEntrenamiento = -1
         )
 
         viewModelScope.launch {
+            launch {
+                healthServicesManager.exerciseStatus().collect { update ->
+                    val data = update.latestMetrics
+                    
+                    val pasos = data.getData(DataType.STEPS_TOTAL)?.total?.toInt() ?: _uiState.value.pasos
+                    
+                    // Conversión de metros (reloj) a kilómetros (interfaz)
+                    val metros = data.getData(DataType.DISTANCE_TOTAL)?.total ?: (_uiState.value.distancia * 1000)
+                    val kilometros = metros / 1000.0
+                    
+                    val calorias = data.getData(DataType.CALORIES_TOTAL)?.total?.toInt() ?: _uiState.value.calorias
+                    
+                    actualizarMetricas(pasos, calorias, kilometros)
+                }
+            }
+
             entrenamientoRepository.iniciar(idUsuario).fold(
                 onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        idEntrenamiento = it.idEntrenamiento
-                    )
+                    _uiState.value = _uiState.value.copy(idEntrenamiento = it.idEntrenamiento)
                 },
-                onFailure = { 
-                    // Si falla el servidor, nos quedamos con el ID temporal
-                    // para permitir que el usuario pueda finalizar la sesión.
-                }
+                onFailure = { }
             )
         }
     }
@@ -77,42 +90,38 @@ class WearEntrenamientoViewModel : ViewModel() {
 
     fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {
         val state = _uiState.value
-        
-        // DETENCIÓN INSTANTÁNEA LOCAL
         _uiState.value = _uiState.value.copy(estaActivo = false)
         
         val idEntrenamiento = state.idEntrenamiento
-        if (idEntrenamiento == null) {
-            onResult()
-            return
-        }
-
-        val tiempo = if (fechaInicioMillis > 0) {
-            ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
-        } else state.tiempo
-
+        
         viewModelScope.launch {
-            // Solo llamamos al servidor si el ID no es el temporal (-1)
-            if (idEntrenamiento != -1) {
-                entrenamientoRepository.finalizar(
-                    idEntrenamiento = idEntrenamiento,
-                    pasos = state.pasos,
-                    calorias = state.calorias,
-                    distancia = state.distancia,
-                    tiempo = tiempo,
-                    coordenadas = emptyList(),
-                    puntoInicio = Punto(0.0, 0.0),
-                    puntoFin = Punto(0.0, 0.0)
-                ).fold(
-                    onSuccess = {
-                        checkMetasCompletadas(idUsuario)
-                        onResult()
-                    },
-                    onFailure = { onResult() }
-                )
-            } else {
+            healthServicesManager.stopExercise()
+            
+            if (idEntrenamiento == null || idEntrenamiento == -1) {
                 onResult()
+                return@launch
             }
+
+            val tiempo = if (fechaInicioMillis > 0) {
+                ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
+            } else state.tiempo
+
+            entrenamientoRepository.finalizar(
+                idEntrenamiento = idEntrenamiento,
+                pasos = state.pasos,
+                calorias = state.calorias,
+                distancia = state.distancia,
+                tiempo = tiempo,
+                coordenadas = emptyList(),
+                puntoInicio = Punto(0.0, 0.0),
+                puntoFin = Punto(0.0, 0.0)
+            ).fold(
+                onSuccess = {
+                    checkMetasCompletadas(idUsuario)
+                    onResult()
+                },
+                onFailure = { onResult() }
+            )
         }
     }
 
@@ -120,12 +129,11 @@ class WearEntrenamientoViewModel : ViewModel() {
         viewModelScope.launch {
             metaRepository.getMetas(idUsuario).fold(
                 onSuccess = { metas ->
-                    val state = _uiState.value
                     val completadas = metas.filter { meta ->
                         !meta.terminada && meta.valorActual >= meta.valorObjetivo
                     }.map { meta ->
                         MetaCompletada(
-                            tipoMeta = TipoMeta.valueOf(meta.tipoMeta),
+                            tipoMeta = TipoMeta.valueOf(meta.tipoMeta.uppercase()),
                             valorObjetivo = meta.valorObjetivo
                         )
                     }
@@ -137,7 +145,7 @@ class WearEntrenamientoViewModel : ViewModel() {
                         )
                     }
                 },
-                onFailure = { /* manejar error */ }
+                onFailure = { }
             )
         }
     }
