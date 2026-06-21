@@ -41,8 +41,17 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
 
     private var fechaInicioMillis: Long = 0L
 
+    // Metas hardcodeadas para pruebas
+    private val metasPrueba = listOf(
+        MetaCompletada(TipoMeta.DISTANCIA, 0.20),
+        MetaCompletada(TipoMeta.PASOS, 30.0),
+        MetaCompletada(TipoMeta.CALORIAS, 12.0)
+    )
+    private val metasAlcanzadas = mutableSetOf<TipoMeta>()
+
     fun iniciar(idUsuario: Int) {
         fechaInicioMillis = System.currentTimeMillis()
+        metasAlcanzadas.clear()
         _uiState.value = WearEntrenamientoUiState(
             estaActivo = true,
             idEntrenamiento = -1
@@ -86,6 +95,39 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
             distancia = distancia,
             tiempo = tiempoSegundos
         )
+
+        // Verificar metas hardcodeadas en tiempo real
+        verificarMetasPrueba(distancia, pasos, calorias)
+    }
+
+    private fun verificarMetasPrueba(distancia: Double, pasos: Int, calorias: Int) {
+        if (_uiState.value.mostrarMetaCompletada) return
+
+        val metasCompletadas = mutableListOf<MetaCompletada>()
+
+        for (meta in metasPrueba) {
+            if (meta.tipoMeta in metasAlcanzadas) continue
+
+            val alcanzada = when (meta.tipoMeta) {
+                TipoMeta.DISTANCIA -> distancia >= meta.valorObjetivo
+                TipoMeta.PASOS -> pasos >= meta.valorObjetivo.toInt()
+                TipoMeta.CALORIAS -> calorias >= meta.valorObjetivo.toInt()
+                TipoMeta.TIEMPO -> false
+            }
+
+            if (alcanzada) {
+                metasAlcanzadas.add(meta.tipoMeta)
+                metasCompletadas.add(meta)
+            }
+        }
+
+        if (metasCompletadas.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                metasCompletadas = metasCompletadas,
+                mostrarMetaCompletada = true,
+                metaActual = metasCompletadas.first()
+            )
+        }
     }
 
     fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {

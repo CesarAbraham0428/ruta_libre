@@ -7,15 +7,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import mx.utng.cala.wearos.presentation.components.MetaCompletadaAlerta
 import mx.utng.cala.wearos.presentation.screens.InicioScreen
 import mx.utng.cala.wearos.presentation.screens.MetricasScreen
-import mx.utng.cala.wearos.presentation.screens.MetaCompletadaScreen
 import mx.utng.cala.wearos.presentation.viewmodel.WearEntrenamientoViewModel
 
 object WearRoutes {
     const val INICIO = "inicio"
     const val METRICAS = "metricas"
-    const val META_COMPLETADA = "meta_completada"
 }
 
 @Composable
@@ -41,31 +40,21 @@ fun WearNavGraph(
                 estaActivo = uiState.estaActivo,
                 onFinalizar = {
                     viewModel.finalizar(1) {
-                        val currentState = viewModel.uiState.value
-                        if (currentState.mostrarMetaCompletada) {
-                            navController.navigate(WearRoutes.META_COMPLETADA) {
-                                popUpTo(WearRoutes.INICIO)
-                            }
-                        } else {
-                            navController.popBackStack()
-                        }
+                        navController.popBackStack()
                     }
                 }
             )
         }
-        composable(WearRoutes.META_COMPLETADA) {
-            uiState.metaActual?.let { meta ->
-                MetaCompletadaScreen(
-                    meta = meta,
-                    onAceptar = {
-                        viewModel.aceptarMetaCompletada()
-                        val remaining = uiState.metasCompletadas.size - 1
-                        if (remaining <= 0) {
-                            navController.popBackStack()
-                        }
-                    }
-                )
+    }
+
+    if (uiState.mostrarMetaCompletada && uiState.metaActual != null) {
+        MetaCompletadaAlerta(
+            visible = true,
+            tipoMeta = uiState.metaActual!!.tipoMeta,
+            valorObjetivo = uiState.metaActual!!.valorObjetivo,
+            onAceptar = {
+                viewModel.aceptarMetaCompletada()
             }
-        }
+        )
     }
 }
