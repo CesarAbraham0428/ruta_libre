@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import mx.utng.cala.core.data.dto.response.MetaResponse
 import mx.utng.cala.core.data.model.Punto
 import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
@@ -41,36 +42,50 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
 
     private var fechaInicioMillis: Long = 0L
 
-    // Metas hardcodeadas para pruebas
-    private val metasPrueba = listOf(
-        MetaCompletada(TipoMeta.DISTANCIA, 0.20),
-        MetaCompletada(TipoMeta.PASOS, 30.0),
-        MetaCompletada(TipoMeta.CALORIAS, 12.0)
-    )
+    // Metas reales cargadas desde el servidor para monitoreo en tiempo real
+    private val metasUsuario = mutableListOf<MetaResponse>()
     private val metasAlcanzadas = mutableSetOf<TipoMeta>()
 
     fun iniciar(idUsuario: Int) {
         fechaInicioMillis = System.currentTimeMillis()
         metasAlcanzadas.clear()
+        synchronized(metasUsuario) {
+            metasUsuario.clear()
+        }
         _uiState.value = WearEntrenamientoUiState(
             estaActivo = true,
             idEntrenamiento = -1
         )
 
         viewModelScope.launch {
+            // Cargar metas del usuario desde la base de datos
+            metaRepository.getMetas(idUsuario).fold(
+                onSuccess = { metas ->
+                    synchronized(metasUsuario) {
+                        metasUsuario.clear()
+                        metasUsuario.addAll(metas.filter { !it.terminada })
+                    }
+                },
+                onFailure = { }
+            )
+
             launch {
-                healthServicesManager.exerciseStatus().collect { update ->
-                    val data = update.latestMetrics
-                    
-                    val pasos = data.getData(DataType.STEPS_TOTAL)?.total?.toInt() ?: _uiState.value.pasos
-                    
-                    // Conversión de metros (reloj) a kilómetros (interfaz)
-                    val metros = data.getData(DataType.DISTANCE_TOTAL)?.total ?: (_uiState.value.distancia * 1000)
-                    val kilometros = metros / 1000.0
-                    
-                    val calorias = data.getData(DataType.CALORIES_TOTAL)?.total?.toInt() ?: _uiState.value.calorias
-                    
-                    actualizarMetricas(pasos, calorias, kilometros)
+                try {
+                    healthServicesManager.exerciseStatus().collect { update ->
+                        val data = update.latestMetrics
+                        
+                        val pasos = data.getData(DataType.STEPS_TOTAL)?.total?.toInt() ?: _uiState.value.pasos
+                        
+                        // Conversión de metros (reloj) a kilómetros (interfaz)
+                        val metros = data.getData(DataType.DISTANCE_TOTAL)?.total ?: (_uiState.value.distancia * 1000)
+                        val kilometros = metros / 1000.0
+                        
+                        val calorias = data.getData(DataType.CALORIES_TOTAL)?.total?.toInt() ?: _uiState.value.calorias
+                        
+                        actualizarMetricas(pasos, calorias, kilometros)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
 
@@ -96,36 +111,44 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
             tiempo = tiempoSegundos
         )
 
-        // Verificar metas hardcodeadas en tiempo real
-        verificarMetasPrueba(distancia, pasos, calorias)
+        // Verificar metas del usuario en tiempo real
+        verificarMetasUsuario(distancia, pasos, calorias, tiempoSegundos)
     }
 
-    private fun verificarMetasPrueba(distancia: Double, pasos: Int, calorias: Int) {
+    private fun verificarMetasUsuario(distancia: Double, pasos: Int, calorias: Int, tiempoSegundos: Int) {
         if (_uiState.value.mostrarMetaCompletada) return
 
-        val metasCompletadas = mutableListOf<MetaCompletada>()
+        val completedGoalsList = mutableListOf<MetaCompletada>()
 
-        for (meta in metasPrueba) {
-            if (meta.tipoMeta in metasAlcanzadas) continue
+        synchronized(metasUsuario) {
+            for (meta in metasUsuario) {
+                val tipo = try {
+                    TipoMeta.valueOf(meta.tipoMeta.uppercase())
+                } catch (e: Exception) {
+                    continue
+                }
 
-            val alcanzada = when (meta.tipoMeta) {
-                TipoMeta.DISTANCIA -> distancia >= meta.valorObjetivo
-                TipoMeta.PASOS -> pasos >= meta.valorObjetivo.toInt()
-                TipoMeta.CALORIAS -> calorias >= meta.valorObjetivo.toInt()
-                TipoMeta.TIEMPO -> false
-            }
+                if (tipo in metasAlcanzadas) continue
 
-            if (alcanzada) {
-                metasAlcanzadas.add(meta.tipoMeta)
-                metasCompletadas.add(meta)
+                val alcanzada = when (tipo) {
+                    TipoMeta.DISTANCIA -> (meta.valorActual + distancia) >= meta.valorObjetivo
+                    TipoMeta.PASOS -> (meta.valorActual + pasos) >= meta.valorObjetivo
+                    TipoMeta.CALORIAS -> (meta.valorActual + calorias) >= meta.valorObjetivo
+                    TipoMeta.TIEMPO -> (meta.valorActual + (tiempoSegundos / 60.0)) >= meta.valorObjetivo
+                }
+
+                if (alcanzada) {
+                    metasAlcanzadas.add(tipo)
+                    completedGoalsList.add(MetaCompletada(tipo, meta.valorObjetivo))
+                }
             }
         }
 
-        if (metasCompletadas.isNotEmpty()) {
+        if (completedGoalsList.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(
-                metasCompletadas = metasCompletadas,
+                metasCompletadas = _uiState.value.metasCompletadas + completedGoalsList,
                 mostrarMetaCompletada = true,
-                metaActual = metasCompletadas.first()
+                metaActual = completedGoalsList.first()
             )
         }
     }
@@ -137,7 +160,11 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         val idEntrenamiento = state.idEntrenamiento
         
         viewModelScope.launch {
-            healthServicesManager.stopExercise()
+            try {
+                healthServicesManager.stopExercise()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             
             if (idEntrenamiento == null || idEntrenamiento == -1) {
                 onResult()
