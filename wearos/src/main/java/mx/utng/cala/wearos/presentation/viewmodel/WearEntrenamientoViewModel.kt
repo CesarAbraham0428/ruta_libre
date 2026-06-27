@@ -1,11 +1,24 @@
 package mx.utng.cala.wearos.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.health.services.client.data.CumulativeDataPoint
+import androidx.health.services.client.data.DataType
+import androidx.health.services.client.data.DataPoint
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import mx.utng.cala.core.data.dto.response.MetaResponse
+import mx.utng.cala.core.data.model.Punto
+import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
+import mx.utng.cala.core.data.repository.MetaRepository
+
+data class MetaCompletada(
+    val tipoMeta: TipoMeta,
+    val valorObjetivo: Double
+)
 
 data class WearEntrenamientoUiState(
     val estaActivo: Boolean = false,
@@ -13,31 +26,212 @@ data class WearEntrenamientoUiState(
     val distancia: Double = 0.0,
     val pasos: Int = 0,
     val calorias: Int = 0,
-    val tiempo: Int = 0
+    val tiempo: Int = 0,
+    val metasCompletadas: List<MetaCompletada> = emptyList(),
+    val mostrarMetaCompletada: Boolean = false,
+    val metaActual: MetaCompletada? = null
 )
 
-class WearEntrenamientoViewModel : ViewModel() {
+class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = EntrenamientoRepository()
+    private val entrenamientoRepository = EntrenamientoRepository()
+    private val metaRepository = MetaRepository()
+    private val healthServicesManager = HealthServicesManager(application)
     private val _uiState = MutableStateFlow(WearEntrenamientoUiState())
     val uiState: StateFlow<WearEntrenamientoUiState> = _uiState
 
+    private var fechaInicioMillis: Long = 0L
+
+    // Metas reales cargadas desde el servidor para monitoreo en tiempo real
+    private val metasUsuario = mutableListOf<MetaResponse>()
+    private val metasAlcanzadas = mutableSetOf<TipoMeta>()
+
     fun iniciar(idUsuario: Int) {
+        fechaInicioMillis = System.currentTimeMillis()
+        metasAlcanzadas.clear()
+        synchronized(metasUsuario) {
+            metasUsuario.clear()
+        }
+        _uiState.value = WearEntrenamientoUiState(
+            estaActivo = true,
+            idEntrenamiento = -1
+        )
+
         viewModelScope.launch {
-            repository.iniciar(idUsuario).fold(
-                onSuccess = {
-                    _uiState.value = WearEntrenamientoUiState(
-                        estaActivo = true, idEntrenamiento = it.idEntrenamiento
-                    )
+            // Cargar metas del usuario desde la base de datos
+            metaRepository.getMetas(idUsuario).fold(
+                onSuccess = { metas ->
+                    synchronized(metasUsuario) {
+                        metasUsuario.clear()
+                        metasUsuario.addAll(metas.filter { !it.terminada })
+                    }
                 },
-                onFailure = { /* manejar error */ }
+                onFailure = { }
+            )
+
+            launch {
+                try {
+                    healthServicesManager.exerciseStatus().collect { update ->
+                        val data = update.latestMetrics
+                        
+                        val pasos = data.getData(DataType.STEPS_TOTAL)?.total?.toInt() ?: _uiState.value.pasos
+                        
+                        // Conversión de metros (reloj) a kilómetros (interfaz)
+                        val metros = data.getData(DataType.DISTANCE_TOTAL)?.total ?: (_uiState.value.distancia * 1000)
+                        val kilometros = metros / 1000.0
+                        
+                        val calorias = data.getData(DataType.CALORIES_TOTAL)?.total?.toInt() ?: _uiState.value.calorias
+                        
+                        actualizarMetricas(pasos, calorias, kilometros)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            entrenamientoRepository.iniciar(idUsuario).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(idEntrenamiento = it.idEntrenamiento)
+                },
+                onFailure = { }
             )
         }
     }
 
-    fun actualizarMetricas(pasos: Int, calorias: Int, distancia: Double, tiempo: Int) {
+    fun actualizarMetricas(pasos: Int, calorias: Int, distancia: Double) {
+        if (!_uiState.value.estaActivo) return
+
+        val tiempoSegundos = if (fechaInicioMillis > 0) {
+            ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
+        } else 0
         _uiState.value = _uiState.value.copy(
-            pasos = pasos, calorias = calorias, distancia = distancia, tiempo = tiempo
+            pasos = pasos,
+            calorias = calorias,
+            distancia = distancia,
+            tiempo = tiempoSegundos
         )
+
+        // Verificar metas del usuario en tiempo real
+        verificarMetasUsuario(distancia, pasos, calorias, tiempoSegundos)
+    }
+
+    private fun verificarMetasUsuario(distancia: Double, pasos: Int, calorias: Int, tiempoSegundos: Int) {
+        if (_uiState.value.mostrarMetaCompletada) return
+
+        val completedGoalsList = mutableListOf<MetaCompletada>()
+
+        synchronized(metasUsuario) {
+            for (meta in metasUsuario) {
+                val tipo = try {
+                    TipoMeta.valueOf(meta.tipoMeta.uppercase())
+                } catch (e: Exception) {
+                    continue
+                }
+
+                if (tipo in metasAlcanzadas) continue
+
+                val alcanzada = when (tipo) {
+                    TipoMeta.DISTANCIA -> (meta.valorActual + distancia) >= meta.valorObjetivo
+                    TipoMeta.PASOS -> (meta.valorActual + pasos) >= meta.valorObjetivo
+                    TipoMeta.CALORIAS -> (meta.valorActual + calorias) >= meta.valorObjetivo
+                    TipoMeta.TIEMPO -> (meta.valorActual + (tiempoSegundos / 60.0)) >= meta.valorObjetivo
+                }
+
+                if (alcanzada) {
+                    metasAlcanzadas.add(tipo)
+                    completedGoalsList.add(MetaCompletada(tipo, meta.valorObjetivo))
+                }
+            }
+        }
+
+        if (completedGoalsList.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                metasCompletadas = _uiState.value.metasCompletadas + completedGoalsList,
+                mostrarMetaCompletada = true,
+                metaActual = completedGoalsList.first()
+            )
+        }
+    }
+
+    fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {
+        val state = _uiState.value
+        _uiState.value = _uiState.value.copy(estaActivo = false)
+        
+        val idEntrenamiento = state.idEntrenamiento
+        
+        viewModelScope.launch {
+            try {
+                healthServicesManager.stopExercise()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            if (idEntrenamiento == null || idEntrenamiento == -1) {
+                onResult()
+                return@launch
+            }
+
+            val tiempo = if (fechaInicioMillis > 0) {
+                ((System.currentTimeMillis() - fechaInicioMillis) / 1000).toInt()
+            } else state.tiempo
+
+            entrenamientoRepository.finalizar(
+                idEntrenamiento = idEntrenamiento,
+                pasos = state.pasos,
+                calorias = state.calorias,
+                distancia = state.distancia,
+                tiempo = tiempo,
+                coordenadas = emptyList(),
+                puntoInicio = Punto(0.0, 0.0),
+                puntoFin = Punto(0.0, 0.0)
+            ).fold(
+                onSuccess = {
+                    checkMetasCompletadas(idUsuario)
+                    onResult()
+                },
+                onFailure = { onResult() }
+            )
+        }
+    }
+
+    private fun checkMetasCompletadas(idUsuario: Int) {
+        viewModelScope.launch {
+            metaRepository.getMetas(idUsuario).fold(
+                onSuccess = { metas ->
+                    val completadas = metas.filter { meta ->
+                        !meta.terminada && meta.valorActual >= meta.valorObjetivo
+                    }.map { meta ->
+                        MetaCompletada(
+                            tipoMeta = TipoMeta.valueOf(meta.tipoMeta.uppercase()),
+                            valorObjetivo = meta.valorObjetivo
+                        )
+                    }
+                    if (completadas.isNotEmpty()) {
+                        _uiState.value = _uiState.value.copy(
+                            metasCompletadas = completadas,
+                            mostrarMetaCompletada = true,
+                            metaActual = completadas.first()
+                        )
+                    }
+                },
+                onFailure = { }
+            )
+        }
+    }
+
+    fun aceptarMetaCompletada() {
+        val restantes = _uiState.value.metasCompletadas.drop(1)
+        if (restantes.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                metasCompletadas = restantes,
+                metaActual = restantes.first()
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(
+                metasCompletadas = emptyList(),
+                mostrarMetaCompletada = false,
+                metaActual = null
+            )
+        }
     }
 }
