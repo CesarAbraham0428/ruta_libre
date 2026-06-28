@@ -16,15 +16,16 @@ Documentación técnica del módulo `:wearos`, la aplicación companion para sma
    - [WearNavGraph](#wearnavgraph)
    - [InicioScreen](#inicioscreen)
    - [MetricasScreen](#metricasscreen)
-   - [MetaCompletadaScreen](#metacompletadascreen)
+   - [MetaCompletadaAlerta](#metacompletadaalerta)
    - [WearEntrenamientoViewModel](#wearentrenamientoviewmodel)
+   - [HealthServicesManager](#healthservicesmanager)
    - [Tema (Color / Theme)](#tema-color--theme)
 7. [Flujo de navegación](#flujo-de-navegación)
 8. [Comunicación con el módulo core](#comunicación-con-el-módulo-core)
 9. [Sincronización con otros dispositivos](#sincronización-con-otros-dispositivos)
 10. [AndroidManifest y permisos](#androidmanifest-y-permisos)
 11. [Recursos](#recursos)
-12. [Changelog de UI](#changelog-de-ui)
+12. [Changelog](#changelog)
 
 ---
 
@@ -162,13 +163,15 @@ Extraídas del catálogo `gradle/lib.versions.toml`:
 wearos/src/main/java/mx/utng/cala/wearos/presentation/
 ├── MainActivityWearOs.kt              # Entry point de la app
 ├── navigation/
-│   └── WearNavGraph.kt                # NavHost con 3 rutas
+│   └── WearNavGraph.kt                # NavHost con 2 rutas + diálogo de meta
+├── components/
+│   └── MetaCompletadaAlerta.kt        # Diálogo de meta alcanzada (ya no es screen)
 ├── screens/
 │   ├── InicioScreen.kt                # Pantalla de inicio con botón INICIAR
-│   ├── MetricasScreen.kt              # Métricas en tiempo real + botón FINALIZAR
-│   └── MetaCompletadaScreen.kt        # Notificación de meta alcanzada
+│   └── MetricasScreen.kt              # Métricas en tiempo real + botón FINALIZAR
 ├── viewmodel/
-│   └── WearEntrenamientoViewModel.kt  # Lógica de negocio y estado
+│   ├── WearEntrenamientoViewModel.kt  # Lógica de negocio y estado
+│   └── HealthServicesManager.kt       # Gestión de sensores Health Services
 └── theme/
     ├── Color.kt                       # Paleta de colores
     └── Theme.kt                       # Tema Material3 para Wear OS
@@ -218,13 +221,14 @@ class MainActivityWearOs : ComponentActivity() {
 
 **Archivo:** `WearNavGraph.kt:15`
 
-Define las rutas de navegación y el `NavHost` con 3 destinos:
+Define las rutas de navegación y el `NavHost` con 2 destinos:
 
 | Ruta | Screen | Descripción |
 |------|--------|-------------|
 | `inicio` | `InicioScreen` | Pantalla principal con resumen y botón INICIAR |
 | `metricas` | `MetricasScreen` | Métricas en vivo durante la actividad |
-| `meta_completada` | `MetaCompletadaScreen` | Felicitación al cumplir una meta |
+
+La meta completada **ya no es una ruta independiente** — se muestra como un diálogo (`MetaCompletadaAlerta`) superpuesto en el NavGraph, activado cuando `uiState.mostrarMetaCompletada = true`.
 
 El ViewModel se instancia a nivel de NavGraph y se comparte entre todas las pantallas.
 
@@ -232,13 +236,12 @@ El ViewModel se instancia a nivel de NavGraph y se comparte entre todas las pant
 object WearRoutes {
     const val INICIO = "inicio"
     const val METRICAS = "metricas"
-    const val META_COMPLETADA = "meta_completada"
 }
 ```
 
 **Flujo de navegación:**
 1. `INICIO` → (usuario presiona INICIAR) → `METRICAS`
-2. `METRICAS` → (usuario presiona FINALIZAR) → si hay meta completada → `META_COMPLETADA` → (ACEPTAR) → `INICIO`
+2. `METRICAS` → (usuario presiona FINALIZAR) → si hay meta completada → se muestra `MetaCompletadaAlerta` → (ACEPTAR) → `INICIO`
 3. `METRICAS` → (usuario presiona FINALIZAR) → sin metas → `INICIO`
 
 ### InicioScreen
@@ -270,16 +273,18 @@ Pantalla principal durante la actividad. Muestra:
 
 Las métricas se reciben como parámetros desde el ViewModel. El tiempo local se incrementa independientemente con un contador interno para mantener la fluidez.
 
-### MetaCompletadaScreen
+### MetaCompletadaAlerta
 
-**Archivo:** `MetaCompletadaScreen.kt:30`
+**Archivo:** `components/MetaCompletadaAlerta.kt`
 
-Pantalla que aparece cuando el usuario completa una o más metas durante el entrenamiento. Muestra:
+Diálogo que se superpone sobre `MetricasScreen` cuando el usuario completa una o más metas durante el entrenamiento. Muestra:
 
 - Icono de trofeo (`EmojiEvents`)
 - Texto "¡Meta completada!"
 - Tarjeta con el tipo de meta y valor objetivo
 - Botón **ACEPTAR** (verde)
+
+Se activa mediante `uiState.mostrarMetaCompletada` en el NavGraph, sin necesidad de una ruta de navegación independiente.
 
 Soporta los 4 tipos de meta definidos en `TipoMeta` del módulo `:core`:
 
@@ -290,11 +295,11 @@ Soporta los 4 tipos de meta definidos en `TipoMeta` del módulo `:core`:
 | `CALORIAS` | `LocalFireDepartment` | kcal |
 | `TIEMPO` | `Timer` | min |
 
-Si hay múltiples metas completadas, se muestran una por una; al aceptar la última se regresa a `INICIO`.
+Si hay múltiples metas completadas, se muestran una por una mediante llamadas sucesivas a `aceptarMetaCompletada()`.
 
 ### WearEntrenamientoViewModel
 
-**Archivo:** `WearEntrenamientoViewModel.kt:32`
+**Archivo:** `WearEntrenamientoViewModel.kt:34`
 
 Único ViewModel del módulo. Gestiona todo el ciclo de vida del entrenamiento.
 
@@ -303,29 +308,71 @@ Si hay múltiples metas completadas, se muestran una por una; al aceptar la últ
 | Propiedad | Tipo | Descripción |
 |-----------|------|-------------|
 | `estaActivo` | `Boolean` | Indica si hay un entrenamiento en curso |
-| `idEntrenamiento` | `Int?` | ID del entrenamiento activo en backend |
+| `idEntrenamiento` | `Int?` | ID del entrenamiento activo en backend (`null` mientras no se confirme) |
 | `distancia` | `Double` | Distancia recorrida (km) |
 | `pasos` | `Int` | Número de pasos |
 | `calorias` | `Int` | Calorías quemadas |
 | `tiempo` | `Int` | Tiempo transcurrido (segundos) |
 | `metasCompletadas` | `List<MetaCompletada>` | Lista de metas alcanzadas |
-| `mostrarMetaCompletada` | `Boolean` | Flag para mostrar pantalla de meta |
+| `mostrarMetaCompletada` | `Boolean` | Flag para mostrar el diálogo de meta |
 | `metaActual` | `MetaCompletada?` | Meta actual a mostrar |
 
 **Métodos públicos:**
 
 | Método | Descripción |
 |--------|-------------|
-| `iniciar(idUsuario)` | Llama a `EntrenamientoRepository.iniciar()`, guarda el `idEntrenamiento` y la fecha de inicio |
-| `actualizarMetricas(pasos, calorias, distancia)` | Actualiza las métricas y calcula el tiempo transcurrido |
-| `finalizar(idUsuario, onResult)` | Llama a `EntrenamientoRepository.finalizar()`, luego verifica metas con `checkMetasCompletadas()` |
-| `aceptarMetaCompletada()` | Avanza a la siguiente meta o cierra el modal |
+| `iniciar(idUsuario)` | Inicializa estado, carga metas del usuario, inicia Health Services, llama a `POST /entrenamientos/iniciar` y guarda el `idEntrenamiento` |
+| `actualizarMetricas(pasos, calorias, distancia)` | Actualiza las métricas en el estado y verifica metas en tiempo real |
+| `finalizar(idUsuario, onResult)` | Detiene Health Services, lee `idEntrenamiento` del estado actual, llama a `PUT /entrenamientos/finalizar`, luego verifica metas con `checkMetasCompletadas()` |
+| `aceptarMetaCompletada()` | Avanza a la siguiente meta o cierra el diálogo |
 
 **Métodos privados:**
 
 | Método | Descripción |
 |--------|-------------|
-| `checkMetasCompletadas(idUsuario)` | Consulta metas del usuario vía `MetaRepository`, filtra las no terminadas cuyo `valorActual >= valorObjetivo` |
+| `verificarMetasUsuario(distancia, pasos, calorias, tiempoSegundos)` | Verifica en tiempo real si alguna meta del usuario se alcanzó usando los valores actuales acumulados |
+| `checkMetasCompletadas(idUsuario)` | Consulta metas del usuario vía `MetaRepository` después de finalizar, filtra las no terminadas cuyo `valorActual >= valorObjetivo` |
+
+**Manejo de errores:** Todos los fallos de red o API se registran con `Log.e("WearVM", ...)` para facilitar la depuración desde Logcat.
+
+**Detalle del flujo `iniciar()`:**
+
+1. Guarda `fechaInicioMillis` y limpia estado de metas.
+2. Establece `_uiState` con `estaActivo = true` e `idEntrenamiento = null`.
+3. Lanza una coroutine que:
+   - Carga metas activas del usuario desde el backend.
+   - Inicia Health Services para recibir métricas de sensores.
+   - Llama a `POST /entrenamientos/iniciar` y actualiza `idEntrenamiento` en el estado.
+
+**Detalle del flujo `finalizar()`:**
+
+1. Marca `estaActivo = false` en el estado.
+2. Lanza una coroutine que:
+   - Detiene Health Services.
+   - Lee `idEntrenamiento` del **estado actual** (no de un snapshot previo), evitando condiciones de carrera.
+   - Si `idEntrenamiento` es `null`, registra el error y retorna sin llamar al backend.
+   - Calcula el tiempo transcurrido.
+   - Llama a `PUT /entrenamientos/finalizar` con las métricas acumuladas.
+   - En éxito, consulta metas actualizadas y ejecuta `onResult()`.
+
+### HealthServicesManager
+
+**Archivo:** `HealthServicesManager.kt:12`
+
+Gestiona la interacción con `Health Services` de Android para Wear OS. Proporciona:
+
+| Método | Descripción |
+|--------|-------------|
+| `hasExerciseCapability()` | Verifica si el dispositivo soporta ejercicio de running |
+| `exerciseStatus()` | Retorna un `Flow<ExerciseUpdate>` que emite actualizaciones de `STEPS_TOTAL`, `CALORIES_TOTAL` y `DISTANCE_TOTAL` |
+| `stopExercise()` | Detiene la sesión de ejercicio |
+
+Utiliza `callbackFlow` para convertir el callback `ExerciseUpdateCallback` en un Flow de Kotlin, permitiendo su consumo con corutinas.
+
+**Sensores monitoreados:**
+- `DataType.STEPS_TOTAL` → pasos acumulados
+- `DataType.CALORIES_TOTAL` → calorías acumuladas
+- `DataType.DISTANCE_TOTAL` → distancia en metros (convertida a km en el ViewModel)
 
 ### Tema (Color / Theme)
 
@@ -555,7 +602,7 @@ Sin reglas personalizadas (archivo vacío por defecto). Las reglas necesarias pa
 
 ---
 
-## Changelog de UI
+## Changelog
 
 ### 14/06/2026 — Corrección de fondo blanco y optimización para pantalla redonda
 
@@ -596,3 +643,19 @@ Se corrigieron problemas de visualización en el emulador Wear OS: fondo blanco 
 | Altura botón | 40dp | 36dp |
 | Icono métrica | 18dp | 14dp |
 | Fondo métrica | — (transparente) | `Surface 60%` + `RoundedCornerShape(20dp)` |
+
+### 27/06/2026 — Corrección de guardado de entrenamientos y logging
+
+Se corrigió un bug crítico que impedía que los datos del entrenamiento se guardaran en la base de datos al finalizar desde el smartwatch.
+
+#### Problema detectado
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| Los entrenamientos no se guardaban en BD al finalizar | `finalizar()` capturaba `idEntrenamiento` de un snapshot del estado antes de que la coroutine de `iniciar()` respondiera. Además, los errores de red eran tragados silenciosamente (`onFailure = { }`). | Se movió la lectura de `idEntrenamiento` **dentro** de la coroutine en `finalizar()`, se cambió el valor inicial de `-1` a `null`, y se agregó `Log.e(...)` en todos los `onFailure`. |
+
+#### Archivos modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `viewmodel/WearEntrenamientoViewModel.kt` | Se cambió `idEntrenamiento = -1` → `idEntrenamiento = null`. Se movió `val state = _uiState.value` dentro de la coroutine de `finalizar()`. Se agregó `import android.util.Log` y logging con tag `WearVM` en todos los `onFailure`. Se eliminaron imports no usados (`CumulativeDataPoint`, `DataPoint`). |
