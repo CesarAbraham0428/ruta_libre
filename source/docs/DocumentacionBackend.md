@@ -1,6 +1,6 @@
 # Backend API REST — Ruta Libre
 
-Documentación técnica del backend desarrollado en Node.js + Express + PostgreSQL.
+Documentación técnica del backend desarrollado en Node.js + Express + PostgreSQL con PostGIS.
 
 ---
 
@@ -35,12 +35,13 @@ Se comunica con PostgreSQL 16 + PostGIS para almacenamiento de datos y consultas
 ## Tecnologías
 
 | Componente | Tecnología | Versión |
-|------------|-----------|---------|
+|---|---|---|
 | Runtime | Node.js | 20+ |
 | Framework web | Express | 4.19.x |
 | Cliente PostgreSQL | `pg` | 8.11.x |
 | Variables de entorno | `dotenv` | 16.4.x |
 | CORS | `cors` | 2.8.x |
+| Hashing de contraseñas | `bcryptjs` | 3.0.x |
 | Dev | `nodemon` | 3.1.x |
 | Base de datos | PostgreSQL + PostGIS | 16 |
 
@@ -63,6 +64,7 @@ DB_NAME=rutaLibre
 ```bash
 npm start       # Inicia el servidor en producción
 npm run dev     # Inicia con nodemon (recarga automática)
+npm run test-api # Ejecuta prueba de integración (src/api_test.js)
 ```
 
 ### Inicialización
@@ -91,10 +93,11 @@ backend/
 ├── src/
 │   ├── index.js                # Punto de entrada, middlewares y montado de rutas
 │   ├── db.js                   # Pool de conexión a PostgreSQL
+│   ├── api_test.js             # Script de prueba de integración
 │   └── routes/
-│       ├── auth.js             # Registro e inicio de sesión
+│       ├── auth.js             # Registro e inicio de sesión (bcrypt)
 │       ├── usuarios.js         # Consulta de perfil de usuario
-│       ├── entrenamientos.js   # CRUD de sesiones de entrenamiento
+│       ├── entrenamientos.js   # CRUD de sesiones de entrenamiento (transaccional)
 │       ├── rutas.js            # Coordenadas de rutas (JSONB)
 │       ├── metas.js            # Metas diarias personalizadas
 │       ├── grupos.js           # Grupos y rankings semanales
@@ -110,6 +113,13 @@ app.use(express.urlencoded({ extended: true }));  # Parsear form-urlencoded
 ```
 
 El servidor escucha en `0.0.0.0` para aceptar conexiones desde cualquier interfaz de red, incluyendo las que vienen del emulador Android (`10.0.2.2`).
+
+### Endpoint de estado
+
+```http
+GET /api/status
+→ { "status": "online", "timestamp": "...", "service": "Ruta Libre REST API" }
+```
 
 ---
 
@@ -127,15 +137,15 @@ const pool = new Pool({
 });
 ```
 
-Se utiliza un **Pool** de conexiones de `pg` para manejar múltiples consultas concurrentes. El pool emite eventos `connect` (conexión exitosa) y `error` (error inesperado).
+Se utiliza un **Pool** de conexiones de `pg` para manejar múltiples consultas concurrentes. Se exporta `{ query: (text, params) => pool.query(text, params), pool }`.
 
-### Tablas principales
+### Tablas
 
 | Tabla | Descripción |
-|-------|-------------|
+|---|---|
 | `usuario` | Usuarios del sistema |
 | `grupo` | Grupos para compartir resultados |
-| `usuario_grupo` | Relación M:N usuario-grupo |
+| `usuario_grupo` | Relación M:N usuario-grupo (PK compuesta) |
 | `ruta` | Coordenadas JSONB del recorrido |
 | `entrenamiento` | Sesiones de actividad física |
 | `metas` | Metas diarias personalizadas |
@@ -144,21 +154,21 @@ Se utiliza un **Pool** de conexiones de `pg` para manejar múltiples consultas c
 ### Esquema de `entrenamiento`
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
+|---|---|---|
 | `id_entrenamiento` | `SERIAL PRIMARY KEY` | ID autogenerado |
 | `id_usuario` | `INTEGER NOT NULL` | FK → usuario |
 | `id_ruta` | `INTEGER` | FK → ruta (nullable) |
 | `pasos` | `INTEGER DEFAULT 0` | Pasos totales |
 | `calorias` | `INTEGER DEFAULT 0` | Calorías quemadas |
 | `distancia` | `NUMERIC(10,2) DEFAULT 0` | Distancia en km |
-| `tiempo` | `INTEGER DEFAULT 0` | Tiempo en segundos |
+| `tiempo` | `INTEGER DEFAULT 0` | Tiempo en segundos (0 = no finalizado) |
 | `fecha_inicio` | `TIMESTAMP DEFAULT NOW()` | Inicio del entrenamiento |
 | `punto_inicio` | `GEOMETRY(Point, 4326)` | Punto de inicio (PostGIS) |
 | `punto_fin` | `GEOMETRY(Point, 4326)` | Punto de fin (PostGIS) |
 
 ### Columnas calculadas con PostGIS
 
-Los puntos de inicio y fin se almacenan como geometrías PostGIS usando `ST_MakePoint(longitud, latitud)` con SRID 4326 (WGS84). Al leer se extraen con:
+Los puntos de inicio y fin se almacenan como geometrías PostGIS usando `ST_MakePoint(longitud, latitud)` con SRID 4326. Al leer se extraen con:
 
 ```sql
 ST_Y(punto_inicio) AS lat_ini,
@@ -175,7 +185,7 @@ ST_X(punto_inicio) AS lng_ini
 
 #### `POST /register`
 
-Registra un nuevo usuario.
+Registra un nuevo usuario con contraseña hasheada (bcrypt, salt rounds = 10).
 
 **Request:**
 ```json
@@ -186,17 +196,19 @@ Registra un nuevo usuario.
 }
 ```
 
-**Response:** `201` (sin cuerpo)
-
 **Validaciones:**
-- Todos los campos son obligatorios.
-- `nombre_usuario` debe ser único (error `400` si ya existe).
+- Todos los campos son obligatorios → 400
+- `nombre_usuario` debe ser único → 400 `"Nombre de usuario no disponible cambia tu nombre de usuario"`
+
+**SQL:** `SELECT id_usuario FROM usuario WHERE nombre_usuario = $1` (pre-validación), luego `INSERT INTO usuario (nombre, nombre_usuario, password, fecha_registro) VALUES ($1, $2, $3, NOW())`
+
+**Response:** `201` (sin cuerpo)
 
 ---
 
 #### `POST /login`
 
-Inicia sesión y devuelve un token simulado.
+Inicia sesión verificando la contraseña con bcrypt.
 
 **Request:**
 ```json
@@ -205,6 +217,16 @@ Inicia sesión y devuelve un token simulado.
   "password": "string"
 }
 ```
+
+**Validaciones:**
+- Ambos campos obligatorios → 400
+- Usuario no encontrado o contraseña incorrecta → 401 `"El usuario o la contraseña es incorrecto"`
+
+**SQL:** `SELECT id_usuario, nombre, nombre_usuario, password FROM usuario WHERE nombre_usuario = $1`
+
+**Autenticación:** `bcrypt.compare(password, user.password)` contra el hash almacenado.
+
+**Token:** `token_simulado_{idUsuario}_{timestamp}` (no es JWT, no se verifica en requests posteriores).
 
 **Response `200`:**
 ```json
@@ -215,8 +237,6 @@ Inicia sesión y devuelve un token simulado.
   "token": "token_simulado_1_1689123456789"
 }
 ```
-
-**Nota:** La autenticación usa comparación directa de contraseñas (sin hash). El token es un identificador único generado con timestamp, no un JWT real.
 
 ---
 
@@ -255,6 +275,13 @@ Crea un nuevo entrenamiento con valores en cero y retorna el ID asignado.
 }
 ```
 
+**SQL:**
+```sql
+INSERT INTO entrenamiento (id_usuario, fecha_inicio, pasos, calorias, distancia, tiempo) 
+VALUES ($1, NOW(), 0, 0, 0, 0) 
+RETURNING id_entrenamiento, id_usuario, id_ruta, pasos, calorias, distancia, fecha_inicio, tiempo
+```
+
 **Response `201`:**
 ```json
 {
@@ -273,18 +300,11 @@ Crea un nuevo entrenamiento con valores en cero y retorna el ID asignado.
 }
 ```
 
-**SQL ejecutado:**
-```sql
-INSERT INTO entrenamiento (id_usuario, fecha_inicio, pasos, calorias, distancia, tiempo) 
-VALUES ($1, NOW(), 0, 0, 0, 0) 
-RETURNING id_entrenamiento, id_usuario, id_ruta, pasos, calorias, distancia, fecha_inicio, tiempo
-```
-
 ---
 
 #### `PUT /finalizar`
 
-Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), actualiza las metas activas del usuario y genera notificaciones de logros.
+Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), actualiza las metas activas del usuario y genera notificaciones de logros. **Operación transaccional** (BEGIN/COMMIT/ROLLBACK).
 
 **Request:**
 ```json
@@ -294,10 +314,31 @@ Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), 
   "calorias": 120,
   "distancia": 2.5,
   "tiempo": 1800,
-  "coordenadas": [],
-  "puntoInicio": { "latitud": 19.0, "longitud": -99.0 },
-  "puntoFin": { "latitud": 19.1, "longitud": -99.1 }
+  "coordenadas": [{ "longitud": -99.0, "latitud": 19.0 }],
+  "puntoInicio": { "longitud": -99.0, "latitud": 19.0 },
+  "puntoFin": { "longitud": -99.1, "latitud": 19.1 }
 }
+```
+
+**Proceso interno (transacción):**
+
+```
+1. BEGIN
+2. Si coordenadas.length > 0 → INSERT en ruta (JSON.stringify) → obtener idRuta
+3. UPDATE entrenamiento SET pasos, calorias, distancia, tiempo, id_ruta
+4. Si puntoInicio no es (0,0) → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
+5. Si puntoFin no es (0,0) → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
+6. Para cada meta activa del usuario (terminada = FALSE):
+   a. Incrementar valor_actual según tipo:
+      - 'distancia' → +distancia (km)
+      - 'pasos' → +pasos
+      - 'calorias' → +calorias
+      - 'tiempo' → +tiempo/60.0 (segundos → minutos)
+   b. Si nuevo valor >= valor_objetivo → marcar terminada = TRUE
+   c. Si se completó → INSERT en notificacion con mensaje:
+      "¡Felicidades! Has completado tu meta diaria de {Tipo} ({valorObjetivo})."
+7. COMMIT
+8. En caso de error → ROLLBACK
 ```
 
 **Response `200`:**
@@ -318,35 +359,11 @@ Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), 
 }
 ```
 
-**Proceso interno (transacción):**
-
-```
-1. BEGIN
-2. Si coordenadas.length > 0 → INSERT en ruta → obtener idRuta
-3. UPDATE entrenamiento SET pasos, calorias, distancia, tiempo, id_ruta
-4. Si puntoInicio no es cero → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-5. Si puntoFin no es cero → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-6. Para cada meta activa del usuario:
-   a. Incrementar valor_actual según tipo (distancia, pasos, calorias, tiempo/60)
-   b. Si nuevo valor >= valor_objetivo → marcar terminada = TRUE
-   c. Si se completó → INSERT en notificacion
-7. COMMIT
-```
-
-**Mapeo de tipos de meta a incremento:**
-
-| tipo_meta | Incremento |
-|-----------|-----------|
-| `distancia` | `distancia` (km) |
-| `pasos` | `pasos` |
-| `calorias` | `calorias` |
-| `tiempo` | `tiempo / 60.0` (segundos → minutos) |
-
 ---
 
 #### `GET /activo/:idUsuario`
 
-Obtiene el entrenamiento activo del usuario (aquel con `tiempo = 0`).
+Obtiene el entrenamiento activo del usuario (aquel con `tiempo = 0` — no finalizado).
 
 **Response `200`:**
 ```json
@@ -367,7 +384,7 @@ Obtiene el entrenamiento activo del usuario (aquel con `tiempo = 0`).
 
 Historial completo de entrenamientos del usuario, ordenado por fecha descendente.
 
-**Response `200`:** Array de objetos con la misma estructura que `PUT /finalizar`.
+**Response `200`:** Array de objetos con estructura de `PUT /finalizar`.
 
 ---
 
@@ -424,7 +441,7 @@ Actualiza las coordenadas de una ruta existente.
 ```json
 {
   "idRuta": 3,
-  "coordenadas": [{ "latitud": 19.0, "longitud": -99.0 }, ...]
+  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
 }
 ```
 
@@ -432,7 +449,7 @@ Actualiza las coordenadas de una ruta existente.
 ```json
 {
   "idRuta": 3,
-  "coordenadas": [{ "latitud": 19.0, "longitud": -99.0 }, ...]
+  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
 }
 ```
 
@@ -446,7 +463,7 @@ Obtiene una ruta por su ID.
 ```json
 {
   "idRuta": 3,
-  "coordenadas": [{ "latitud": 19.0, "longitud": -99.0 }, ...]
+  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
 }
 ```
 
@@ -458,7 +475,7 @@ Obtiene una ruta por su ID.
 
 #### `POST /`
 
-Crea una nueva meta diaria para un usuario.
+Crea una nueva meta diaria para un usuario. Valida que no exista una meta activa del mismo tipo.
 
 **Request:**
 ```json
@@ -470,6 +487,10 @@ Crea una nueva meta diaria para un usuario.
 ```
 
 **Valores válidos para `tipoMeta`:** `distancia`, `pasos`, `calorias`, `tiempo` (se convierte a minúsculas internamente).
+
+**Validaciones:**
+- Todos los campos obligatorios → 400
+- Si ya existe una meta activa (no terminada) del mismo tipo → 400 `"Ya tienes una meta activa de este tipo"`
 
 **Response `201`:**
 ```json
@@ -485,11 +506,44 @@ Crea una nueva meta diaria para un usuario.
 
 ---
 
+#### `PUT /:idMetas`
+
+Actualiza una meta existente. Todos los campos del body son opcionales (usa `COALESCE`).
+
+**Request:**
+```json
+{
+  "valorObjetivo": 10.0
+}
+```
+
+**Response `200`:**
+```json
+{
+  "idMetas": 10,
+  "idUsuario": 1,
+  "tipoMeta": "DISTANCIA",
+  "valorObjetivo": 10.0,
+  "valorActual": 5.0,
+  "terminada": false
+}
+```
+
+---
+
+#### `DELETE /:idMetas`
+
+Elimina una meta.
+
+**Response:** `204` (sin cuerpo)
+
+---
+
 #### `GET /usuario/:idUsuario`
 
 Obtiene todas las metas del usuario, ordenadas por ID descendente.
 
-**Response `200`:** Array de objetos con la misma estructura que `POST /`.
+**Response `200`:** Array de objetos con estructura de `POST /`.
 
 ---
 
@@ -499,7 +553,7 @@ Obtiene todas las metas del usuario, ordenadas por ID descendente.
 
 #### `POST /`
 
-Crea un nuevo grupo con un código único de 6 caracteres (letras mayúsculas + dígitos).
+Crea un nuevo grupo con un código único de 6 caracteres (letras mayúsculas + dígitos). Si el código generado ya existe (error `23505`), se reintenta hasta 5 veces.
 
 **Request:**
 ```json
@@ -519,13 +573,11 @@ Crea un nuevo grupo con un código único de 6 caracteres (letras mayúsculas + 
 }
 ```
 
-Si el código generado ya existe (colisión), se reintenta hasta 5 veces con un nuevo código.
-
 ---
 
 #### `POST /unirse`
 
-Un usuario se une a un grupo mediante su código.
+Un usuario se une a un grupo mediante su código (el código se convierte a mayúsculas).
 
 **Request:**
 ```json
@@ -535,9 +587,9 @@ Un usuario se une a un grupo mediante su código.
 }
 ```
 
-**Response:** `200` (sin cuerpo)
-
 Usa `ON CONFLICT DO NOTHING` para ignorar si el usuario ya pertenece al grupo.
+
+**Response:** `200` (sin cuerpo) o `404` si el código no existe.
 
 ---
 
@@ -545,13 +597,13 @@ Usa `ON CONFLICT DO NOTHING` para ignorar si el usuario ya pertenece al grupo.
 
 Grupos a los que pertenece el usuario.
 
-**Response `200`:** Array de objetos con `idGrupo`, `nombre`, `codigo`, `descripcion`.
+**Response `200`:** Array de `{ idGrupo, nombre, codigo, descripcion }`.
 
 ---
 
 #### `GET /:idGrupo/miembros`
 
-Miembros del grupo con su rendimiento semanal acumulado.
+Miembros del grupo con su rendimiento semanal acumulado (desde el lunes).
 
 **Response `200`:**
 ```json
@@ -564,8 +616,7 @@ Miembros del grupo con su rendimiento semanal acumulado.
     "pasos": 10000,
     "calorias": 800,
     "tiempo": 3600
-  },
-  ...
+  }
 ]
 ```
 
@@ -573,7 +624,7 @@ Miembros del grupo con su rendimiento semanal acumulado.
 
 #### `GET /:idGrupo/ranking`
 
-Miembros del grupo ordenados por distancia semanal descendente (ranking).
+Miembros del grupo ordenados por distancia semanal descendente.
 
 **Response `200`:**
 ```json
@@ -610,6 +661,8 @@ Obtiene las notificaciones del usuario ordenadas por fecha descendente.
 ]
 ```
 
+Las notificaciones se generan automáticamente durante el `PUT /entrenamientos/finalizar` cuando se completa una meta.
+
 ---
 
 #### `PUT /:id/leer-movil`
@@ -643,12 +696,13 @@ Usuario                    WearEntrenamientoViewModel          Backend
   │                              │  (pasos=0, calorias=0, ...)  │
   │                              │ ◄─── { idEntrenamiento: 5 }  │
   │                              │                              │
-  │  (corre, sensores registran) │                              │
+  │  (corre, Health Services)    │                              │
   │                              │                              │
   │  [FINALIZAR]                 │                              │
   │ ───────────────────────────► │                              │
   │                              │  PUT /entrenamientos/finalizar│
   │                              │ ────────────────────────────►│
+  │                              │  BEGIN                        │
   │                              │  1. UPDATE entrenamiento     │
   │                              │     SET pasos, calorias, ... │
   │                              │  2. Para cada meta activa:   │
@@ -656,6 +710,7 @@ Usuario                    WearEntrenamientoViewModel          Backend
   │                              │     valor_actual += incremento│
   │                              │  3. Si meta completada:      │
   │                              │     INSERT notificacion     │
+  │                              │  COMMIT                      │
   │                              │ ◄─── { idEntrenamiento: 5 } │
   │                              │                              │
   │  ◄─── navega a Inicio ───── │                              │
@@ -666,9 +721,30 @@ Usuario                    WearEntrenamientoViewModel          Backend
 1. **`POST /iniciar`** crea el registro con valores en cero y devuelve el `idEntrenamiento`.
 2. Durante la actividad, las métricas solo existen en memoria del ViewModel (no se envían incrementales al backend).
 3. **`PUT /finalizar`** envía los valores finales acumulados en una sola petición.
-4. El smartwatch envía `coordenadas = []` porque el seguimiento GPS se delega al teléfono.
+4. El smartwatch envía `coordenadas = []` y puntos de inicio/fin en (0,0) porque el seguimiento GPS se delega al teléfono.
 5. Las metas se actualizan **del lado del backend** dentro de la misma transacción de finalización, sumando los valores del entrenamiento al `valor_actual` de cada meta.
 6. Si al actualizar una meta se alcanza o supera el objetivo, se genera automáticamente una notificación de logro.
+
+---
+
+## Script de prueba
+
+**Archivo:** `src/api_test.js`
+
+Ejecuta el flujo completo de integración:
+1. Health check (`GET /api/status`)
+2. Registro de usuario (`POST /api/auth/register`)
+3. Inicio de sesión (`POST /api/auth/login`)
+4. Consulta de perfil (`GET /api/usuarios/:id`)
+5. Creación de meta (`POST /api/metas`)
+6. Listado de metas (`GET /api/metas/usuario/:id`)
+7. Inicio de entrenamiento (`POST /api/entrenamientos/iniciar`)
+8. Finalización con datos que disparan meta completada (`PUT /api/entrenamientos/finalizar`)
+9. Verificación de meta actualizada (`GET /api/metas/usuario/:id`)
+10. Verificación de notificación creada (`GET /api/notificaciones/usuario/:id`)
+11. Dashboard semanal (`GET /api/entrenamientos/semana/:id`)
+
+Ejecutar con: `node src/api_test.js`
 
 ---
 
@@ -687,18 +763,20 @@ Todos los errores siguen el mismo formato:
 ### Códigos de estado
 
 | Código | Significado | Causas comunes |
-|--------|-------------|----------------|
+|---|---|---|
 | `201` | Creado | Inicio de entrenamiento, creación de meta/grupo |
 | `200` | Éxito | Finalización, consultas, actualizaciones |
-| `400` | Bad Request | Faltan campos obligatorios, ID inválido |
+| `204` | Sin contenido | Eliminación de meta |
+| `400` | Bad Request | Faltan campos obligatorios, ID inválido, meta duplicada |
 | `401` | Unauthorized | Credenciales incorrectas |
-| `404` | Not Found | Recurso no encontrado (usuario, grupo, entrenamiento) |
+| `404` | Not Found | Recurso no encontrado (usuario, grupo, entrenamiento, código) |
 | `500` | Internal Server Error | Error en base de datos o excepción no manejada |
 
 ### Errores de base de datos
 
-- Los errores de clave duplicada (código PostgreSQL `23505`) se manejan explícitamente en la creación de grupos (reintento con nuevo código).
-- Las transacciones en `PUT /finalizar` usan `BEGIN`/`COMMIT`/`ROLLBACK` para garantizar atomicidad: si algo falla, todos los cambios se deshacen.
+- Los errores de clave duplicada (código PostgreSQL `23505`) se manejan explícitamente en la creación de grupos (reintento con nuevo código hasta 5 intentos).
+- Las transacciones en `PUT /finalizar` usan `BEGIN`/`COMMIT`/`ROLLBACK` para garantizar atomicidad.
+- Todos los errores se registran con `console.error(...)` antes de responder.
 
 ### Error global no capturado
 
@@ -709,4 +787,8 @@ app.use((err, req, res, next) => {
 });
 ```
 
----
+### Autenticación
+
+- Las contraseñas se almacenan hasheadas con **bcryptjs** (salt rounds = 10).
+- El "token" devuelto en login es un string con formato `token_simulado_{idUsuario}_{timestamp}`.
+- **No existe middleware de verificación de tokens** — ninguna ruta valida el token en requests subsecuentes.

@@ -49,6 +49,24 @@ fun CrearMetaScreen(
 
     val currentConfig = tipoMetaConfig[selectedTipo] ?: tipoMetaConfig[TipoMeta.PASOS]!!
 
+    val activeTipos = remember(metasState.metas) {
+        metasState.metas.filter { !it.terminada }.map { it.tipoMeta.uppercase() }.toSet()
+    }
+
+    val availableTipos = remember(activeTipos) {
+        TipoMeta.entries.filter { it.name !in activeTipos }
+    }
+
+    LaunchedEffect(Unit) {
+        authState.idUsuario?.let { metasViewModel.cargarMetas(it) }
+    }
+
+    LaunchedEffect(availableTipos) {
+        if (selectedTipo !in availableTipos && availableTipos.isNotEmpty()) {
+            selectedTipo = availableTipos.first()
+        }
+    }
+
     LaunchedEffect(metasState.isMetaCreated) {
         if (metasState.isMetaCreated) {
             metasViewModel.resetMetaCreatedState()
@@ -113,64 +131,73 @@ fun CrearMetaScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
-                        OutlinedTextField(
-                            value = currentConfig.displayName,
-                            onValueChange = {},
-                            readOnly = true,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = currentConfig.icon,
-                                    contentDescription = null,
-                                    tint = Primary
-                                )
-                            },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Expandir",
-                                    tint = OnSurfaceVariant
-                                )
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Outline,
-                                unfocusedBorderColor = Outline,
-                                focusedContainerColor = Surface,
-                                unfocusedContainerColor = Surface
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                    if (availableTipos.isEmpty()) {
+                        Text(
+                            text = "Completa tus metas actuales para poder crear nuevas metas",
+                            color = OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 16.dp)
                         )
-                        ExposedDropdownMenu(
+                    } else {
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            containerColor = SurfaceVariant
+                            onExpandedChange = { expanded = !expanded }
                         ) {
-                            TipoMeta.entries.forEach { tipo ->
-                                val config = tipoMetaConfig[tipo] ?: return@forEach
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = config.icon,
-                                                contentDescription = null,
-                                                tint = Primary
-                                            )
-                                            Text(config.displayName)
+                            OutlinedTextField(
+                                value = currentConfig.displayName,
+                                onValueChange = {},
+                                readOnly = true,
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = currentConfig.icon,
+                                        contentDescription = null,
+                                        tint = Primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Expandir",
+                                        tint = OnSurfaceVariant
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Outline,
+                                    unfocusedBorderColor = Outline,
+                                    focusedContainerColor = Surface,
+                                    unfocusedContainerColor = Surface
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                containerColor = SurfaceVariant
+                            ) {
+                                availableTipos.forEach { tipo ->
+                                    val config = tipoMetaConfig[tipo] ?: return@forEach
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = config.icon,
+                                                    contentDescription = null,
+                                                    tint = Primary
+                                                )
+                                                Text(config.displayName)
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedTipo = tipo
+                                            expanded = false
                                         }
-                                    },
-                                    onClick = {
-                                        selectedTipo = tipo
-                                        expanded = false
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -264,7 +291,7 @@ fun CrearMetaScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Primary
                     ),
-                    enabled = !metasState.isLoading && !inputError && valorObjetivo.isNotEmpty()
+                    enabled = !metasState.isLoading && !inputError && valorObjetivo.isNotEmpty() && availableTipos.isNotEmpty()
                 ) {
                     if (metasState.isLoading) {
                         CircularProgressIndicator(
