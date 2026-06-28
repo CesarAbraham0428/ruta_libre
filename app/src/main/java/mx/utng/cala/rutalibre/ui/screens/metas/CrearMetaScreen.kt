@@ -36,6 +36,7 @@ fun CrearMetaScreen(
     var expanded by remember { mutableStateOf(false) }
     var selectedTipo by remember { mutableStateOf(TipoMeta.PASOS) }
     var valorObjetivo by remember { mutableStateOf("") }
+    var inputError by remember { mutableStateOf(false) }
 
     val tipoMetaConfig = remember {
         mapOf(
@@ -174,6 +175,15 @@ fun CrearMetaScreen(
                         }
                     }
 
+                        if (inputError) {
+                        Text(
+                            text = "Solo se permiten números",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
@@ -185,7 +195,15 @@ fun CrearMetaScreen(
 
                     OutlinedTextField(
                         value = valorObjetivo,
-                        onValueChange = { valorObjetivo = it },
+                        onValueChange = {
+                            if (it.all { c -> c.isDigit() || c == '.' }) {
+                                valorObjetivo = it
+                                inputError = false
+                            } else {
+                                inputError = true
+                            }
+                        },
+                        isError = inputError,
                         placeholder = { Text("0", color = OnSurfaceVariant) },
                         suffix = {
                             Text(
@@ -246,7 +264,7 @@ fun CrearMetaScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Primary
                     ),
-                    enabled = !metasState.isLoading && valorObjetivo.isNotEmpty()
+                    enabled = !metasState.isLoading && !inputError && valorObjetivo.isNotEmpty()
                 ) {
                     if (metasState.isLoading) {
                         CircularProgressIndicator(

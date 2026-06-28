@@ -50,6 +50,7 @@ fun EditarMetaScreen(
     var nuevoValor by remember(meta) {
         mutableStateOf(meta?.valorObjetivo?.toInt()?.toString() ?: "")
     }
+    var inputError by remember { mutableStateOf(false) }
 
     LaunchedEffect(metasState.isMetaUpdated) {
         if (metasState.isMetaUpdated) {
@@ -150,7 +151,15 @@ fun EditarMetaScreen(
 
                     OutlinedTextField(
                         value = nuevoValor,
-                        onValueChange = { nuevoValor = it },
+                        onValueChange = {
+                            if (it.all { c -> c.isDigit() || c == '.' }) {
+                                nuevoValor = it
+                                inputError = false
+                            } else {
+                                inputError = true
+                            }
+                        },
+                        isError = inputError,
                         placeholder = { Text("0", color = OnSurfaceVariant) },
                         suffix = {
                             Text(
@@ -168,6 +177,15 @@ fun EditarMetaScreen(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    if (inputError) {
+                        Text(
+                            text = "Solo se permiten números",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
 
@@ -211,7 +229,7 @@ fun EditarMetaScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Primary
                     ),
-                    enabled = !metasState.isLoading && nuevoValor.isNotEmpty()
+                    enabled = !metasState.isLoading && !inputError && nuevoValor.isNotEmpty()
                 ) {
                     if (metasState.isLoading) {
                         CircularProgressIndicator(
