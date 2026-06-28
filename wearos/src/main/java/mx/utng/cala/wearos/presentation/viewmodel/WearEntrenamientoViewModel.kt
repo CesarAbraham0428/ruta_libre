@@ -143,9 +143,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
 
         if (completedGoalsList.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(
-                metasCompletadas = _uiState.value.metasCompletadas + completedGoalsList,
-                mostrarMetaCompletada = true,
-                metaActual = completedGoalsList.first()
+                metasCompletadas = _uiState.value.metasCompletadas + completedGoalsList
             )
         }
     }
@@ -185,6 +183,13 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
             ).fold(
                 onSuccess = {
                     Log.d("WearVM", "Entrenamiento $idEntrenamiento finalizado correctamente")
+                    val metasAcumuladas = _uiState.value.metasCompletadas
+                    if (metasAcumuladas.isNotEmpty()) {
+                        _uiState.value = _uiState.value.copy(
+                            mostrarMetaCompletada = true,
+                            metaActual = metasAcumuladas.first()
+                        )
+                    }
                     checkMetasCompletadas(idUsuario)
                     onResult()
                 },
@@ -208,11 +213,20 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                             valorObjetivo = meta.valorObjetivo
                         )
                     }
-                    if (completadas.isNotEmpty()) {
+                    val metasExistentes = _uiState.value.metasCompletadas
+                    val metasNuevas = completadas.filter { nueva ->
+                        metasExistentes.none { it.tipoMeta == nueva.tipoMeta }
+                    }
+                    val todasLasMetas = metasExistentes + metasNuevas
+                    if (todasLasMetas.isNotEmpty() && !_uiState.value.mostrarMetaCompletada) {
                         _uiState.value = _uiState.value.copy(
-                            metasCompletadas = completadas,
+                            metasCompletadas = todasLasMetas,
                             mostrarMetaCompletada = true,
-                            metaActual = completadas.first()
+                            metaActual = todasLasMetas.first()
+                        )
+                    } else if (todasLasMetas.isNotEmpty()) {
+                        _uiState.value = _uiState.value.copy(
+                            metasCompletadas = todasLasMetas
                         )
                     }
                 },

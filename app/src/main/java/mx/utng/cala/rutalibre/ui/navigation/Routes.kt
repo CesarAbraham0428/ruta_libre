@@ -7,6 +7,7 @@ object Routes {
     const val ENTRENAMIENTO = "entrenamiento/{idEntrenamiento}"
     const val RESUMEN = "resumen/{idEntrenamiento}"
     const val METAS = "metas"
+    const val CREAR_META = "crear_meta"
     const val GRUPOS = "grupos"
     const val PERFIL = "perfil"
 

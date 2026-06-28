@@ -10,6 +10,8 @@ import mx.utng.cala.core.data.repository.AuthRepository
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isLoggedIn: Boolean = false,
+    val idUsuario: Int? = null,
+    val nombre: String? = null,
     val registrationSuccess: Boolean = false,
     val error: String? = null
 )
@@ -24,7 +26,14 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             repository.login(usuario, password).fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true) },
+                onSuccess = { 
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false, 
+                        isLoggedIn = true,
+                        idUsuario = it.idUsuario,
+                        nombre = it.nombre
+                    ) 
+                },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
             )
         }

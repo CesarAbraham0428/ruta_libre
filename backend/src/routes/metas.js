@@ -13,6 +13,16 @@ router.post('/', async (req, res) => {
   const tipoMetaLower = tipoMeta.toLowerCase();
   
   try {
+    // Validar que no exista una meta activa del mismo tipo para este usuario
+    const metaActivaResult = await db.query(
+      'SELECT id_metas FROM metas WHERE id_usuario = $1 AND tipo_meta = $2 AND terminada = FALSE',
+      [idUsuario, tipoMetaLower]
+    );
+
+    if (metaActivaResult.rows.length > 0) {
+      return res.status(400).json({ error: 'Ya tienes una meta activa de este tipo' });
+    }
+
     const result = await db.query(
       'INSERT INTO metas (id_usuario, tipo_meta, valor_objetivo, valor_actual, terminada) VALUES ($1, $2, $3, 0, FALSE) RETURNING id_metas, id_usuario, tipo_meta, valor_objetivo, valor_actual, terminada',
       [idUsuario, tipoMetaLower, valorObjetivo]
