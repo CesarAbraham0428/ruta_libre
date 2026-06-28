@@ -1,9 +1,8 @@
 package mx.utng.cala.wearos.presentation.viewmodel
 
 import android.app.Application
-import androidx.health.services.client.data.CumulativeDataPoint
+import android.util.Log
 import androidx.health.services.client.data.DataType
-import androidx.health.services.client.data.DataPoint
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,11 +53,10 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         }
         _uiState.value = WearEntrenamientoUiState(
             estaActivo = true,
-            idEntrenamiento = -1
+            idEntrenamiento = null
         )
 
         viewModelScope.launch {
-            // Cargar metas del usuario desde la base de datos
             metaRepository.getMetas(idUsuario).fold(
                 onSuccess = { metas ->
                     synchronized(metasUsuario) {
@@ -66,7 +64,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                         metasUsuario.addAll(metas.filter { !it.terminada })
                     }
                 },
-                onFailure = { }
+                onFailure = { e -> Log.e("WearVM", "Error al cargar metas", e) }
             )
 
             launch {
@@ -76,7 +74,6 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                         
                         val pasos = data.getData(DataType.STEPS_TOTAL)?.total?.toInt() ?: _uiState.value.pasos
                         
-                        // Conversión de metros (reloj) a kilómetros (interfaz)
                         val metros = data.getData(DataType.DISTANCE_TOTAL)?.total ?: (_uiState.value.distancia * 1000)
                         val kilometros = metros / 1000.0
                         
@@ -85,7 +82,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                         actualizarMetricas(pasos, calorias, kilometros)
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("WearVM", "Error en health services", e)
                 }
             }
 
@@ -93,7 +90,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(idEntrenamiento = it.idEntrenamiento)
                 },
-                onFailure = { }
+                onFailure = { e -> Log.e("WearVM", "Error al iniciar entrenamiento", e) }
             )
         }
     }
@@ -154,19 +151,20 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
     }
 
     fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {
-        val state = _uiState.value
         _uiState.value = _uiState.value.copy(estaActivo = false)
-        
-        val idEntrenamiento = state.idEntrenamiento
-        
+
         viewModelScope.launch {
             try {
                 healthServicesManager.stopExercise()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("WearVM", "Error al detener ejercicio", e)
             }
-            
-            if (idEntrenamiento == null || idEntrenamiento == -1) {
+
+            val state = _uiState.value
+            val idEntrenamiento = state.idEntrenamiento
+
+            if (idEntrenamiento == null) {
+                Log.e("WearVM", "No hay idEntrenamiento válido — no se guardarán los datos")
                 onResult()
                 return@launch
             }
@@ -186,10 +184,14 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                 puntoFin = Punto(0.0, 0.0)
             ).fold(
                 onSuccess = {
+                    Log.d("WearVM", "Entrenamiento $idEntrenamiento finalizado correctamente")
                     checkMetasCompletadas(idUsuario)
                     onResult()
                 },
-                onFailure = { onResult() }
+                onFailure = { e ->
+                    Log.e("WearVM", "Error al finalizar entrenamiento $idEntrenamiento", e)
+                    onResult()
+                }
             )
         }
     }
@@ -214,7 +216,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
                         )
                     }
                 },
-                onFailure = { }
+                onFailure = { e -> Log.e("WearVM", "Error al verificar metas", e) }
             )
         }
     }
