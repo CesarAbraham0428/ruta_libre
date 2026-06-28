@@ -10,6 +10,7 @@ import mx.utng.cala.core.data.repository.AuthRepository
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isLoggedIn: Boolean = false,
+    val registrationSuccess: Boolean = false,
     val error: String? = null
 )
 
@@ -31,11 +32,19 @@ class AuthViewModel : ViewModel() {
 
     fun register(nombre: String, usuario: String, password: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, registrationSuccess = false)
             repository.register(nombre, usuario, password).fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false) },
+                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, registrationSuccess = true) },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
             )
         }
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    fun resetRegistrationState() {
+        _uiState.value = _uiState.value.copy(registrationSuccess = false)
     }
 }

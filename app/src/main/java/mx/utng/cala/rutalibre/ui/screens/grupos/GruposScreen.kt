@@ -12,9 +12,9 @@ fun GruposScreen(navController: NavController) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("Grupos", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
-        Button(Modifier.fillMaxWidth()) { Text("Crear grupo") }
+        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Crear grupo") }
         Spacer(Modifier.height(8.dp))
-        Button(Modifier.fillMaxWidth()) { Text("Unirse a grupo") }
+        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Unirse a grupo") }
         Spacer(Modifier.height(16.dp))
         Text("Tus grupos aparecerán aquí")
     }
