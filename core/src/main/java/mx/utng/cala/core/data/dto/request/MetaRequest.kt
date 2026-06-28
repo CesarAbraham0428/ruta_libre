@@ -7,3 +7,7 @@ data class CrearMetaRequest(
     val tipoMeta: TipoMeta,
     val valorObjetivo: Double
 )
+
+data class ActualizarMetaRequest(
+    val valorObjetivo: Double
+)

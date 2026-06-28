@@ -46,6 +46,12 @@ interface ApiService {
     @GET("metas/usuario/{idUsuario}")
     suspend fun getMetas(@Path("idUsuario") idUsuario: Int): Response<List<MetaResponse>>
 
+    @PUT("metas/{idMetas}")
+    suspend fun actualizarMeta(@Path("idMetas") idMetas: Int, @Body request: ActualizarMetaRequest): Response<MetaResponse>
+
+    @DELETE("metas/{idMetas}")
+    suspend fun eliminarMeta(@Path("idMetas") idMetas: Int): Response<Unit>
+
     @POST("grupos")
     suspend fun crearGrupo(@Body request: CrearGrupoRequest): Response<GrupoResponse>
 

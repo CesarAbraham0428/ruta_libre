@@ -25,7 +25,6 @@ Documentación técnica del módulo `:wearos`, la aplicación companion para sma
 9. [Sincronización con otros dispositivos](#sincronización-con-otros-dispositivos)
 10. [AndroidManifest y permisos](#androidmanifest-y-permisos)
 11. [Recursos](#recursos)
-12. [Changelog](#changelog)
 
 ---
 
@@ -33,29 +32,30 @@ Documentación técnica del módulo `:wearos`, la aplicación companion para sma
 
 El módulo `:wearos` es la aplicación para smartwatch con Wear OS del proyecto Ruta Libre. Permite al usuario iniciar y finalizar sesiones de running, visualizar métricas en tiempo real (distancia, pasos, calorías, tiempo) y recibir notificaciones de metas cumplidas directamente desde la muñeca.
 
-Todas las pantallas están construidas con **Jetpack Compose para Wear OS** (`androidx.wear.compose.material3`) y siguen el patrón **MVVM** con un único `WearEntrenamientoViewModel` que gestiona el estado de la actividad.
+Todas las pantallas están construidas con **Jetpack Compose para Wear OS** (`androidx.wear.compose.material3`) y siguen el patrón **MVVM** con un único `WearEntrenamientoViewModel` que gestiona el estado de la actividad. Los datos de sensores se obtienen mediante **Health Services** de Google Play Services.
 
 ---
 
 ## Arquitectura
 
-El módulo sigue la misma arquitectura que el resto del proyecto: **MVVM + StateFlow**.
-
 ```
 WearOs App
 ├── MainActivityWearOs      (ComponentActivity)
-├── NavGraph                 (NavHost con 3 rutas)
-├── Screens                  (Composables: Inicio, Métricas, Meta Completada)
+├── NavGraph                 (NavHost con 2 rutas + diálogo superpuesto)
+├── Screens                  (Composables: Inicio, Métricas)
+├── Components               (MetaCompletadaAlerta — diálogo, no screen)
 ├── ViewModel                (WearEntrenamientoViewModel)
+├── HealthServicesManager    (Sensores Health Services)
 └── Theme                    (Colores + Tema oscuro Wear)
        │
        ▼ (dependencia)
-┌──────────────────────┐
-│   :core (data layer) │
-│   ─ ApiService       │
-│   ─ Repository       │
-│   ─ Modelos/DTOs     │
-└──────────────────────┘
+┌──────────────────────────────┐
+│   :core (data layer)         │
+│   ─ EntrenamientoRepository  │
+│   ─ MetaRepository           │
+│   ─ Modelos: MetaResponse,   │
+│     TipoMeta, Punto          │
+└──────────────────────────────┘
 ```
 
 El módulo es **standalone** (no requiere la app móvil para funcionar) y se comunica directamente con la API REST a través del módulo compartido `:core`.
@@ -92,18 +92,17 @@ dependencies {
     implementation(project(":core"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.foundation)        // wear compose-foundation
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.wear.tooling.preview)
-    implementation(libs.compose.material3)                  // wear compose-material3
+    implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling)
     implementation(libs.navigation.compose)
     implementation(libs.play.services.wearable)
-    // Testing
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
@@ -111,37 +110,23 @@ dependencies {
 }
 ```
 
-### Detalles de configuración
-
 | Propiedad | Valor |
-|-----------|-------|
+|---|---|
 | `applicationId` | `mx.utng.cala.wearos` |
 | `compileSdk` | 36 |
 | `minSdk` | 30 (Android 11 / Wear OS 3) |
 | `targetSdk` | 36 |
-| `compileSdk.minorApiLevel` | 1 |
 | `JavaVersion` | 11 |
-| Compose habilitado | `true` |
-| `useLibrary("wear-sdk")` | `true` |
-
-### Plugins utilizados
-
-| Plugin | Propósito |
-|--------|-----------|
-| `com.android.application` | Aplicación Android |
-| `org.jetbrains.kotlin.plugin.compose` | Soporte de Compose en Kotlin |
 
 ---
 
 ## Versiones y dependencias
 
-Extraídas del catálogo `gradle/lib.versions.toml`:
-
-| Librería | Versión | Uso en Wear OS |
-|----------|---------|---------------|
+| Librería | Versión | Uso |
+|---|---|---|
 | Android Gradle Plugin | 9.2.1 | Compilación |
 | Kotlin | 2.2.10 | Lenguaje |
-| Compose BOM | 2026.02.01 | Gestión de versions Compose |
+| Compose BOM | 2026.02.01 | Gestión de versiones Compose |
 | `androidx.activity.compose` | 1.13.0 | Activity + Compose |
 | `androidx.compose.material3` (wear) | 1.6.2 | UI Material Design para Wear |
 | `androidx.compose.foundation` (wear) | 1.6.2 | Fundamentos de layout Wear |
@@ -152,8 +137,8 @@ Extraídas del catálogo `gradle/lib.versions.toml`:
 | `androidx.core.splashscreen` | 1.2.0 | Pantalla de splash |
 | `androidx.wear.tooling.preview` | 1.0.0 | Preview en Android Studio |
 | `androidx.lifecycle.viewmodel.compose` | 2.10.0 | ViewModel en Compose |
-| Retrofit | 2.11.0 | (vía :core) Cliente HTTP |
-| Gson | 2.11.0 | (vía :core) Serialización JSON |
+| Retrofit | 2.11.0 | (vía `:core`) Cliente HTTP |
+| Gson | 2.11.0 | (vía `:core`) Serialización JSON |
 
 ---
 
@@ -165,10 +150,11 @@ wearos/src/main/java/mx/utng/cala/wearos/presentation/
 ├── navigation/
 │   └── WearNavGraph.kt                # NavHost con 2 rutas + diálogo de meta
 ├── components/
-│   └── MetaCompletadaAlerta.kt        # Diálogo de meta alcanzada (ya no es screen)
+│   └── MetaCompletadaAlerta.kt        # Diálogo de meta alcanzada (único componente)
 ├── screens/
 │   ├── InicioScreen.kt                # Pantalla de inicio con botón INICIAR
-│   └── MetricasScreen.kt              # Métricas en tiempo real + botón FINALIZAR
+│   ├── MetricasScreen.kt              # Métricas en tiempo real + botón FINALIZAR
+│   └── MetaCompletadaScreen.kt        # (No usado — reemplazado por MetaCompletadaAlerta)
 ├── viewmodel/
 │   ├── WearEntrenamientoViewModel.kt  # Lógica de negocio y estado
 │   └── HealthServicesManager.kt       # Gestión de sensores Health Services
@@ -187,10 +173,10 @@ wearos/src/main/
 │   ├── mipmap-{dpi}/                  # Iconos del launcher
 │   └── values/
 │       ├── strings.xml                # app_name = "WearOs"
-│       └── styles.xml                 # Tema de splash screen
-├── lint.xml                           # Configuración de lint
-├── proguard-rules.pro                 # Reglas ProGuard
-└── build.gradle.kts                   # Script de build
+│       └── styles.xml                 # Temas oscuro y splash screen
+├── lint.xml
+├── proguard-rules.pro
+└── build.gradle.kts
 ```
 
 ---
@@ -199,18 +185,21 @@ wearos/src/main/
 
 ### MainActivityWearOs
 
-**Archivo:** `MainActivityWearOs.kt:10`
+**Archivo:** `MainActivityWearOs.kt`
 
-Entry point de la aplicación. `ComponentActivity` que infla el NavGraph dentro del tema `RutaLibreTheme`.
+Entry point de la aplicación. Solicita permisos de sensores en `onCreate` y luego infla el NavGraph dentro del tema `RutaLibreTheme`.
 
 ```kotlin
 class MainActivityWearOs : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Solicita permisos: BODY_SENSORS, ACTIVITY_RECOGNITION, ACCESS_FINE_LOCATION
         setContent {
             RutaLibreTheme {
-                val navController = rememberNavController()
-                WearNavGraph(navController = navController)
+                AppScaffold {
+                    val navController = rememberNavController()
+                    WearNavGraph(navController = navController)
+                }
             }
         }
     }
@@ -219,18 +208,18 @@ class MainActivityWearOs : ComponentActivity() {
 
 ### WearNavGraph
 
-**Archivo:** `WearNavGraph.kt:15`
+**Archivo:** `WearNavGraph.kt`
 
 Define las rutas de navegación y el `NavHost` con 2 destinos:
 
 | Ruta | Screen | Descripción |
-|------|--------|-------------|
+|---|---|---|
 | `inicio` | `InicioScreen` | Pantalla principal con resumen y botón INICIAR |
 | `metricas` | `MetricasScreen` | Métricas en vivo durante la actividad |
 
-La meta completada **ya no es una ruta independiente** — se muestra como un diálogo (`MetaCompletadaAlerta`) superpuesto en el NavGraph, activado cuando `uiState.mostrarMetaCompletada = true`.
+La meta completada se muestra como un **diálogo** (`MetaCompletadaAlerta`) superpuesto fuera del NavHost, activado cuando `uiState.mostrarMetaCompletada && uiState.metaActual != null`.
 
-El ViewModel se instancia a nivel de NavGraph y se comparte entre todas las pantallas.
+El ViewModel se instancia a nivel de NavGraph y se comparte entre todas las pantallas. El `idUsuario` está hardcodeado como `1` en las llamadas del NavGraph.
 
 ```kotlin
 object WearRoutes {
@@ -240,56 +229,55 @@ object WearRoutes {
 ```
 
 **Flujo de navegación:**
-1. `INICIO` → (usuario presiona INICIAR) → `METRICAS`
-2. `METRICAS` → (usuario presiona FINALIZAR) → si hay meta completada → se muestra `MetaCompletadaAlerta` → (ACEPTAR) → `INICIO`
-3. `METRICAS` → (usuario presiona FINALIZAR) → sin metas → `INICIO`
+1. `INICIO` → (usuario presiona INICIAR) → `viewModel.iniciar(1)` + navega a `METRICAS`
+2. `METRICAS` → (usuario presiona FINALIZAR) → `viewModel.finalizar(1) { navController.popBackStack() }` → `INICIO`
+3. Si hay metas completadas, se muestra `MetaCompletadaAlerta` superpuesto sobre el NavGraph
+4. (ACEPTAR) → avanza a la siguiente meta o cierra el diálogo
 
 ### InicioScreen
 
-**Archivo:** `InicioScreen.kt:26`
+**Archivo:** `InicioScreen.kt`
 
 Pantalla inicial del smartwatch que muestra:
 
-- Icono de correr (color `Primary`)
-- Nombre de la app "Ruta Libre"
-- Temporizador en `00:00:00`
-- Cuadro con métricas en cero (Distancia 0.00 km, Pasos 0, Calorías 0 kcal)
-- Botón **INICIAR** (verde) que llama a `viewModel.iniciar()` y navega a `METRICAS`
+- `ScreenScaffold` + `ScalingLazyColumn` con:
+  - Icono `DirectionsRun` color `Primary` (24dp)
+  - Texto "Ruta Libre" (12sp)
+  - Temporizador en `00:00:00` (28sp Bold)
+  - Texto "Tiempo en actividad" (9sp Gray)
+  - 3 filas `MetricRow` con valores en cero: Distancia 0.00 km, Pasos 0, Calorías 0 kcal
+  - Botón **INICIAR** (verde `Primary`, 40dp, texto negro) que llama a `onIniciar()` y navega a `METRICAS`
 
-Utiliza componentes `androidx.wear.compose.material3` (`Button`, `Icon`, `Text`) y un composable privado `MetricRow` para cada métrica.
+Cada `MetricRow` consiste en un `Row` con fondo `Surface` (60% alpha), bordes redondeados de 20dp, padding interno, icono (14dp), label (10sp), valor (12sp Bold) y unidad opcional (9sp Gray).
 
 ### MetricasScreen
 
-**Archivo:** `MetricasScreen.kt:30`
+**Archivo:** `MetricasScreen.kt`
 
-Pantalla principal durante la actividad. Muestra:
+Pantalla principal durante la actividad. Parámetros: `distancia`, `pasos`, `calorias`, `tiempoSegundos`, `estaActivo`, `onFinalizar`.
 
-- Mismo encabezado que InicioScreen
-- Temporizador **incrementándose en tiempo real** con `LaunchedEffect + delay(1000)`
-- Métricas: Distancia (km), Pasos, Calorías (kcal)
-- Botón **FINALIZAR** (verde, color `Primary`) que llama a `onFinalizar`
+- Misma estructura que InicioScreen con:
+  - Temporizador **independiente** que se incrementa con `LaunchedEffect(estaActivo)` usando `System.currentTimeMillis()` con delay de 500ms, formateado como `HH:MM:SS`
+  - Métricas dinámicas: Distancia (km), Pasos (formateado con separadores de miles), Calorías (kcal)
+  - Botón **FINALIZAR** (verde `Primary`, texto negro) que ejecuta `onFinalizar()`
 
-> **Nota de diseño:** El botón FINALIZAR usa `Primary` (verde) con texto negro, consistente con el mockup de la aplicación. Anteriormente usaba `Error` (rojo).
-
-Las métricas se reciben como parámetros desde el ViewModel. El tiempo local se incrementa independientemente con un contador interno para mantener la fluidez.
+El tiempo local se calcula independientemente del ViewModel usando `System.currentTimeMillis() - tiempoBase` para mantener la fluidez sin depender de actualizaciones del estado.
 
 ### MetaCompletadaAlerta
 
 **Archivo:** `components/MetaCompletadaAlerta.kt`
 
-Diálogo que se superpone sobre `MetricasScreen` cuando el usuario completa una o más metas durante el entrenamiento. Muestra:
+Diálogo (`AlertDialog`) que se superpone sobre el NavGraph cuando el usuario completa una o más metas durante el entrenamiento. Muestra:
 
-- Icono de trofeo (`EmojiEvents`)
-- Texto "¡Meta completada!"
+- Icono de trofeo `EmojiEvents` (36dp, Primary)
+- Texto "¡Meta completada!" (14sp Bold)
 - Tarjeta con el tipo de meta y valor objetivo
-- Botón **ACEPTAR** (verde)
-
-Se activa mediante `uiState.mostrarMetaCompletada` en el NavGraph, sin necesidad de una ruta de navegación independiente.
+- Botón **ACEPTAR** (verde, texto negro, 40dp)
 
 Soporta los 4 tipos de meta definidos en `TipoMeta` del módulo `:core`:
 
 | TipoMeta | Icono | Unidad |
-|----------|-------|--------|
+|---|---|---|
 | `DISTANCIA` | `LocationOn` | km |
 | `PASOS` | `DirectionsWalk` | — |
 | `CALORIAS` | `LocalFireDepartment` | kcal |
@@ -299,89 +287,88 @@ Si hay múltiples metas completadas, se muestran una por una mediante llamadas s
 
 ### WearEntrenamientoViewModel
 
-**Archivo:** `WearEntrenamientoViewModel.kt:34`
+**Archivo:** `WearEntrenamientoViewModel.kt`
 
 Único ViewModel del módulo. Gestiona todo el ciclo de vida del entrenamiento.
 
 **Estado (`WearEntrenamientoUiState`):**
 
 | Propiedad | Tipo | Descripción |
-|-----------|------|-------------|
-| `estaActivo` | `Boolean` | Indica si hay un entrenamiento en curso |
-| `idEntrenamiento` | `Int?` | ID del entrenamiento activo en backend (`null` mientras no se confirme) |
-| `distancia` | `Double` | Distancia recorrida (km) |
-| `pasos` | `Int` | Número de pasos |
-| `calorias` | `Int` | Calorías quemadas |
-| `tiempo` | `Int` | Tiempo transcurrido (segundos) |
-| `metasCompletadas` | `List<MetaCompletada>` | Lista de metas alcanzadas |
-| `mostrarMetaCompletada` | `Boolean` | Flag para mostrar el diálogo de meta |
-| `metaActual` | `MetaCompletada?` | Meta actual a mostrar |
+|---|---|---|
+| `estaActivo` | Boolean | Indica si hay un entrenamiento en curso |
+| `idEntrenamiento` | Int? | ID del entrenamiento activo en backend (`null` mientras no se confirme) |
+| `distancia` | Double | Distancia recorrida (km) |
+| `pasos` | Int | Número de pasos |
+| `calorias` | Int | Calorías quemadas |
+| `tiempo` | Int | Tiempo transcurrido (segundos) |
+| `metasCompletadas` | List\<MetaCompletada\> | Lista de metas alcanzadas |
+| `mostrarMetaCompletada` | Boolean | Flag para mostrar el diálogo de meta |
+| `metaActual` | MetaCompletada? | Meta actual a mostrar |
 
 **Métodos públicos:**
 
 | Método | Descripción |
-|--------|-------------|
+|---|---|
 | `iniciar(idUsuario)` | Inicializa estado, carga metas del usuario, inicia Health Services, llama a `POST /entrenamientos/iniciar` y guarda el `idEntrenamiento` |
 | `actualizarMetricas(pasos, calorias, distancia)` | Actualiza las métricas en el estado y verifica metas en tiempo real |
-| `finalizar(idUsuario, onResult)` | Detiene Health Services, lee `idEntrenamiento` del estado actual, llama a `PUT /entrenamientos/finalizar`, luego verifica metas con `checkMetasCompletadas()` |
+| `finalizar(idUsuario, onResult)` | Detiene Health Services, lee `idEntrenamiento` del estado actual, llama a `PUT /entrenamientos/finalizar`, luego verifica metas completadas |
 | `aceptarMetaCompletada()` | Avanza a la siguiente meta o cierra el diálogo |
 
 **Métodos privados:**
 
 | Método | Descripción |
-|--------|-------------|
+|---|---|
 | `verificarMetasUsuario(distancia, pasos, calorias, tiempoSegundos)` | Verifica en tiempo real si alguna meta del usuario se alcanzó usando los valores actuales acumulados |
 | `checkMetasCompletadas(idUsuario)` | Consulta metas del usuario vía `MetaRepository` después de finalizar, filtra las no terminadas cuyo `valorActual >= valorObjetivo` |
 
-**Manejo de errores:** Todos los fallos de red o API se registran con `Log.e("WearVM", ...)` para facilitar la depuración desde Logcat.
-
-**Detalle del flujo `iniciar()`:**
-
-1. Guarda `fechaInicioMillis` y limpia estado de metas.
-2. Establece `_uiState` con `estaActivo = true` e `idEntrenamiento = null`.
+**Detalle del flujo `iniciar(idUsuario)`:**
+1. Guarda `fechaInicioMillis` y limpia estado de metas
+2. Establece `_uiState` con `estaActivo = true` e `idEntrenamiento = null`
 3. Lanza una coroutine que:
-   - Carga metas activas del usuario desde el backend.
-   - Inicia Health Services para recibir métricas de sensores.
-   - Llama a `POST /entrenamientos/iniciar` y actualiza `idEntrenamiento` en el estado.
+   - Carga metas activas del usuario desde el backend
+   - Inicia Health Services (`exerciseStatus()`) para recibir métricas de sensores y las convierte: pasos (`STEPS_TOTAL`), calorías (`CALORIES_TOTAL`), distancia (`DISTANCE_TOTAL` en metros convertida a km)
+   - Llama a `POST /entrenamientos/iniciar` y actualiza `idEntrenamiento` en el estado
 
-**Detalle del flujo `finalizar()`:**
-
-1. Marca `estaActivo = false` en el estado.
+**Detalle del flujo `finalizar(idUsuario, onResult)`:**
+1. Marca `estaActivo = false` en el estado
 2. Lanza una coroutine que:
-   - Detiene Health Services.
-   - Lee `idEntrenamiento` del **estado actual** (no de un snapshot previo), evitando condiciones de carrera.
-   - Si `idEntrenamiento` es `null`, registra el error y retorna sin llamar al backend.
-   - Calcula el tiempo transcurrido.
-   - Llama a `PUT /entrenamientos/finalizar` con las métricas acumuladas.
-   - En éxito, consulta metas actualizadas y ejecuta `onResult()`.
+   - Detiene Health Services
+   - Lee `idEntrenamiento` del **estado actual** (evitando condiciones de carrera con snapshots previos)
+   - Si `idEntrenamiento` es `null`, registra el error y retorna sin llamar al backend
+   - Calcula el tiempo transcurrido
+   - Llama a `PUT /entrenamientos/finalizar` con las métricas acumuladas y `coordenadas = emptyList()`, `puntoInicio = Punto(0,0)`, `puntoFin = Punto(0,0)`
+   - En éxito, si hay metas completadas, activa `mostrarMetaCompletada` con la primera meta
+   - Consulta metas actualizadas del backend y ejecuta `onResult()`
+
+**Manejo de errores:** Todos los fallos de red o API se registran con `Log.e("WearVM", ...)` para facilitar la depuración desde Logcat.
 
 ### HealthServicesManager
 
-**Archivo:** `HealthServicesManager.kt:12`
+**Archivo:** `HealthServicesManager.kt`
 
-Gestiona la interacción con `Health Services` de Android para Wear OS. Proporciona:
+Gestiona la interacción con **Health Services** de Android para Wear OS mediante `HealthServices.getClient()`.
 
 | Método | Descripción |
-|--------|-------------|
-| `hasExerciseCapability()` | Verifica si el dispositivo soporta ejercicio de running |
-| `exerciseStatus()` | Retorna un `Flow<ExerciseUpdate>` que emite actualizaciones de `STEPS_TOTAL`, `CALORIES_TOTAL` y `DISTANCE_TOTAL` |
-| `stopExercise()` | Detiene la sesión de ejercicio |
-
-Utiliza `callbackFlow` para convertir el callback `ExerciseUpdateCallback` en un Flow de Kotlin, permitiendo su consumo con corutinas.
+|---|---|
+| `hasExerciseCapability()` | Verifica si el dispositivo soporta running (`ExerciseType.RUNNING`) |
+| `exerciseStatus()` | Retorna un `Flow<ExerciseUpdate>` usando `callbackFlow` que inicia una sesión de ejercicio y emite actualizaciones de sensores |
+| `stopExercise()` | Detiene la sesión de ejercicio mediante `endExerciseAsync().await()` |
 
 **Sensores monitoreados:**
 - `DataType.STEPS_TOTAL` → pasos acumulados
 - `DataType.CALORIES_TOTAL` → calorías acumuladas
 - `DataType.DISTANCE_TOTAL` → distancia en metros (convertida a km en el ViewModel)
 
+**Configuración de ejercicio:** Usa `ExerciseConfig.builder(ExerciseType.RUNNING)` con los tres data types configurados.
+
+**Callback implementado:** `ExerciseUpdateCallback` con `onExerciseUpdateReceived` (actualizaciones de sensores), los demás métodos son no-op.
+
 ### Tema (Color / Theme)
 
 **Archivo:** `Color.kt`
 
-Paleta de colores compartida con los otros módulos (móvil y TV):
-
 | Color | Hex | Uso |
-|-------|-----|-----|
+|---|---|---|
 | `Primary` | `#7ED957` | Verde principal, botones, iconos |
 | `Secondary` | `#4DA3FF` | Azul secundario |
 | `Tertiary` | `#7C4DFF` | Púrpura terciario |
@@ -389,12 +376,12 @@ Paleta de colores compartida con los otros módulos (móvil y TV):
 | `Surface` | `#0B1424` | Superficies y tarjetas |
 | `OnBackground` | `#FFFFFF` | Texto sobre fondo |
 | `OnSurface` | `#F5F5F5` | Texto sobre superficie |
-| `Error` | `#FF5252` | Botón FINALIZAR |
+| `Error` | `#FF5252` | Errores |
 
 Colores de métricas deportivas:
 
 | Métrica | Hex |
-|---------|-----|
+|---|---|
 | `MetricDistancia` | `#63E66C` |
 | `MetricPasos` | `#42A5FF` |
 | `MetricCalorias` | `#FF8A1F` |
@@ -402,47 +389,7 @@ Colores de métricas deportivas:
 
 **Archivo:** `Theme.kt`
 
-Define `RutaLibreTheme` que envuelve la app con un `MaterialTheme` de Wear OS usando un `ColorScheme` oscuro personalizado. El esquema incluye todas las propiedades necesarias para un tema oscuro completo:
-
-```kotlin
-private val WearColorScheme = ColorScheme(
-    primary = Primary,
-    onPrimary = Color.Black,
-    primaryContainer = Primary.copy(alpha = 0.2f),
-    onPrimaryContainer = Primary,
-    secondary = Secondary,
-    onSecondary = Color.Black,
-    secondaryContainer = Secondary.copy(alpha = 0.2f),
-    onSecondaryContainer = Secondary,
-    tertiary = Tertiary,
-    onTertiary = Color.Black,
-    tertiaryContainer = Tertiary.copy(alpha = 0.2f),
-    onTertiaryContainer = Tertiary,
-    background = Color.Black,           // Fondo negro explícito
-    onBackground = OnBackground,
-    surface = Surface,
-    onSurface = OnSurface,
-    surfaceVariant = Surface,
-    onSurfaceVariant = OnSurface,
-    surfaceContainer = Surface,
-    surfaceContainerHigh = Surface.copy(alpha = 0.8f),
-    surfaceContainerLow = Color.Black,
-    error = Error,
-    onError = Color.White,
-    outline = Color.Gray,
-    outlineVariant = Color.DarkGray
-)
-```
-
-| Propiedad añadida | Valor | Propósito |
-|-------------------|-------|-----------|
-| `onPrimary` | `Color.Black` | Texto/icono sobre Primary |
-| `primaryContainer` | `Primary 20%` | Fondo de contenedor primario |
-| `surfaceVariant` | `Surface` | Variante de superficie |
-| `surfaceContainerHigh` | `Surface 80%` | Contenedor elevado |
-| `surfaceContainerLow` | `Color.Black` | Contenedor bajo |
-| `onError` | `Color.White` | Texto sobre Error |
-| `outline` / `outlineVariant` | `Gray` / `DarkGray` | Bordes y separadores |
+Define `RutaLibreTheme` que envuelve la app con un `MaterialTheme` de Wear OS usando un `ColorScheme` oscuro personalizado con `background = Color.Black` explícito para evitar fondo blanco. Incluye propiedades completas: `onPrimary`, `primaryContainer`, `onPrimaryContainer`, `secondaryContainer`, `tertiaryContainer`, `surfaceVariant`, `onSurfaceVariant`, `surfaceContainer`, `surfaceContainerHigh`, `surfaceContainerLow`, `onError`, `outline`, `outlineVariant`.
 
 ---
 
@@ -450,11 +397,12 @@ private val WearColorScheme = ColorScheme(
 
 ```
                     ┌──────────────┐
-                    │  INICIO      │
+                    │   INICIO     │
                     │ (InicioScreen)│
                     └──────┬───────┘
                            │
                      [INICIAR]
+                     viewModel.iniciar(1)
                            │
                            ▼
                     ┌──────────────┐
@@ -463,23 +411,33 @@ private val WearColorScheme = ColorScheme(
                     └──────┬───────┘
                            │
                      [FINALIZAR]
+                     viewModel.finalizar(1) {
+                       navController.popBackStack()
+                     }
                            │
-                    ┌──────┴───────┐
-                    │              │
-               ¿Meta        No meta
-             completada?   completada
-                    │              │
-                    ▼              ▼
-            ┌──────────────┐  ┌──────────────┐
-            │ META COMPL.  │  │              │
-            │ (MetaCompl.) │──┤   INICIO     │
-            └──────┬───────┘  └──────────────┘
+                           ▼
+                    ┌──────────────┐
+                    │   INICIO     │
+                    └──────┬───────┘
+                           │
+                   ┌───────┴────────┐
+                   │                │
+              ¿Meta           Sin meta
+            completada?      completada
+                   │                │
+                   ▼                ▼
+            ┌──────────────┐   (FIN)
+            │ META COMPL.  │
+            │ (AlertDialog)│
+            └──────┬───────┘
                    │
              [ACEPTAR]
+             (siguiente meta
+              o cerrar)
                    │
                    ▼
             ┌──────────────┐
-            │  INICIO      │
+            │   INICIO     │
             └──────────────┘
 ```
 
@@ -491,7 +449,7 @@ El módulo `:wearos` depende de `:core` (declarado como `implementation(project(
 
 - **`EntrenamientoRepository`** — para iniciar/finalizar entrenamientos vía API REST
 - **`MetaRepository`** — para consultar metas del usuario y detectar metas completadas
-- **Modelos del core** — `TipoMeta` (enum), `Coordenada`, `Punto` (data classes)
+- **Modelos del core** — `TipoMeta` (enum), `MetaResponse`, `Punto` (data classes)
 
 No existe comunicación directa con el módulo `:app` (móvil) ni con `:tv`. Toda la sincronización se realiza a través del backend.
 
@@ -500,24 +458,23 @@ No existe comunicación directa con el módulo `:app` (móvil) ni con `:tv`. Tod
 ## Sincronización con otros dispositivos
 
 1. El smartwatch **inicia** el entrenamiento → `POST /entrenamientos/iniciar` → backend
-2. El smartwatch **finaliza** el entrenamiento → `PUT /entrenamientos/finalizar` → backend
-3. El móvil detecta el entrenamiento activo y muestra el mapa con la ruta
-4. Al finalizar, el móvil envía el registro completo con coordenadas al backend
-5. La TV consulta el histórico semanal desde el backend
-6. Las notificaciones de metas se sincronizan marcando `leida_smartwatch`
+2. El smartwatch **finaliza** el entrenamiento → `PUT /entrenamientos/finalizar` → backend (con `coordenadas = []` y puntos de inicio/fin en cero)
+3. El móvil puede detectar el entrenamiento activo y mostrar el mapa con la ruta
+4. Al finalizar, el backend actualiza las metas y genera notificaciones automáticamente
 
-El smartwatch **no** envía coordenadas GPS (`coordenadas = emptyList()` al finalizar), ya que el seguimiento de ruta se delega al teléfono. El reloj solo aporta las métricas resumidas (pasos, calorías, distancia, tiempo).
+El smartwatch **no** envía coordenadas GPS, ya que el seguimiento de ruta se delega al teléfono. El reloj solo aporta las métricas resumidas (pasos, calorías, distancia, tiempo) medidas por Health Services.
 
 ---
 
 ## AndroidManifest y permisos
 
-**Archivo:** `AndroidManifest.xml`
-
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.WAKE_LOCK" />
 <uses-permission android:name="android.permission.BODY_SENSORS" />
+<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
 <uses-feature android:name="android.hardware.type.watch" />
 
@@ -533,20 +490,21 @@ El smartwatch **no** envía coordenadas GPS (`coordenadas = emptyList()` al fina
     android:value="true" />
 ```
 
-| Elemento | Valor | Descripción |
-|----------|-------|-------------|
-| `android:theme` del `<application>` | `@style/Theme.WearOs.Dark` | Tema oscuro personalizado con `windowBackground = black` |
-| `android:theme` del `<activity>` | `@style/MainActivityWearOsTheme.Starting` | Tema de splash screen |
-
-> **Nota:** El tema `@style/Theme.WearOs.Dark` se creó para forzar fondo negro (`android:windowBackground = @android:color/black`) y evitar que la ventana del sistema muestre fondo blanco antes de que Compose renderice el contenido oscuro.
-
 | Permiso | Propósito |
-|---------|-----------|
+|---|---|
 | `INTERNET` | Comunicación con la API REST |
 | `WAKE_LOCK` | Mantener pantalla encendida durante el entrenamiento |
-| `BODY_SENSORS` | Acceso a sensores corporales (ritmo cardíaco, etc.) |
+| `BODY_SENSORS` | Acceso a sensores corporales |
+| `ACTIVITY_RECOGNITION` | Reconocimiento de actividad física (running) |
+| `ACCESS_FINE_LOCATION` | Ubicación precisa (GPS) |
+| `ACCESS_COARSE_LOCATION` | Ubicación aproximada (red) |
 
-La app se declara **standalone** (`com.google.android.wearable.standalone = true`), lo que significa que funciona independientemente sin necesidad de la app móvil instalada.
+La app se declara **standalone** (`com.google.android.wearable.standalone = true`), funciona independientemente sin la app móvil instalada.
+
+| Elemento | Valor | Descripción |
+|---|---|---|
+| `android:theme` del `<application>` | `@style/Theme.WearOs.Dark` | Tema oscuro con `windowBackground = black` |
+| `android:theme` del `<activity>` | `@style/MainActivityWearOsTheme.Starting` | Tema de splash screen |
 
 ---
 
@@ -555,14 +513,10 @@ La app se declara **standalone** (`com.google.android.wearable.standalone = true
 ### Drawables
 
 | Archivo | Propósito |
-|---------|-----------|
+|---|---|
 | `ic_launcher_foreground.xml` | Foreground del icono del launcher |
 | `ic_launcher_background.xml` | Background del icono del launcher |
 | `splash_icon.xml` | Icono de la pantalla de splash |
-
-### Mipmaps
-
-Iconos del launcher en densidades: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi` y `anydpi` (adaptive icons).
 
 ### Strings
 
@@ -572,90 +526,7 @@ Iconos del launcher en densidades: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi` 
 
 ### Styles
 
-Tema de splash screen basado en `Theme.SplashScreen` con fondo negro e icono personalizado. Además se define un tema oscuro global para la aplicación:
-
-```xml
-<style name="Theme.WearOs.Dark" parent="@android:style/Theme.DeviceDefault.NoActionBar">
-    <item name="android:windowBackground">@android:color/black</item>
-    <item name="android:colorBackground">@android:color/black</item>
-    <item name="android:navigationBarColor">@android:color/black</item>
-    <item name="android:statusBarColor">@android:color/black</item>
-</style>
-```
-
 | Style | Propósito |
-|-------|-----------|
-| `Theme.WearOs.Dark` | Tema base de la app: fondo y barras del sistema en negro |
+|---|---|
+| `Theme.WearOs.Dark` | Tema base: fondo y barras del sistema en negro |
 | `MainActivityWearOsTheme.Starting` | Tema de splash screen (`Theme.SplashScreen`), transiciona a `Theme.WearOs.Dark` |
-
-### Lint
-
-El archivo `lint.xml` ignora el warning `IconLocation` para las imágenes de preview del Tile.
-
----
-
-## ProGuard
-
-**Archivo:** `proguard-rules.pro`
-
-Sin reglas personalizadas (archivo vacío por defecto). Las reglas necesarias para Retrofit/Gson/Coroutines se definen centralizadamente si es necesario.
-
----
-
-## Changelog
-
-### 14/06/2026 — Corrección de fondo blanco y optimización para pantalla redonda
-
-Se corrigieron problemas de visualización en el emulador Wear OS: fondo blanco en lugar de negro y UI comprimida.
-
-#### Problemas detectados
-
-| Problema | Causa | Solución |
-|----------|-------|----------|
-| Fondo blanco | El tema XML `Theme.DeviceDefault` no forzaba fondo negro. El `ColorScheme` de Compose tenía propiedades incompletas, permitiendo valores claros por defecto. | Tema XML oscuro personalizado + `background = Color.Black` explícito en `ColorScheme` + `Box` con `Modifier.background(Color.Black)` en todas las screens |
-| UI muy ajustada (espaciados y fuentes grandes sin considerar bordes redondos) | Padding insuficiente en bordes verticales, fuentes sobredimensionadas para pantalla de 450dp | Aumento de padding vertical (12→28dp), reducción de fuentes (~15%) e iconos (~25%) |
-| Filas de métricas sin contraste visual | `MetricRow` usaba solo `Row` sin fondo | Se añadió `RoundedCornerShape(20dp)` con `Surface.copy(alpha = 0.6f)` a cada fila |
-| Botón FINALIZAR rojo inconsistente con mockup | Usaba `Error` (rojo) en lugar de `Primary` (verde) | Cambiado a `ButtonDefaults.buttonColors(containerColor = Primary)` con texto negro |
-
-#### Archivos modificados
-
-| Archivo | Cambios |
-|---------|---------|
-| `AndroidManifest.xml:15` | `android:theme` cambiado de `@android:style/Theme.DeviceDefault` a `@style/Theme.WearOs.Dark` |
-| `res/values/styles.xml` | Nuevo estilo `Theme.WearOs.Dark` con `windowBackground=black`, `colorBackground=black`, `navigationBarColor=black`, `statusBarColor=black` |
-| `theme/Theme.kt` | `ColorScheme` expandido de 8 a 19 propiedades: `onPrimary`, `primaryContainer`, `onPrimaryContainer`, `secondaryContainer`, `onSecondaryContainer`, `tertiaryContainer`, `onTertiaryContainer`, `surfaceVariant`, `onSurfaceVariant`, `surfaceContainerHigh`, `surfaceContainerLow`, `onError`, `outline`, `outlineVariant`. Se fijó `background = Color.Black` (antes `Background = #050B17`) |
-| `screens/InicioScreen.kt` | Añadido `Box.with(Modifier.background(Color.Black))`. Icono: 32→24dp. Fuente título: 14→12sp. Tiempo: 32→28sp. Métricas: 11→10sp. Valores: 14→12sp. Botón: 14→12sp, altura 40→36dp. Padding: vertical 12→28dp, horizontal 16→20dp. `MetricRow` rediseñada con fondo `Surface.copy(0.6f)` y `RoundedCornerShape(20dp)`, iconos 18→14dp, padding interno añadido |
-| `screens/MetricasScreen.kt` | Mismos cambios que InicioScreen. Botón FINALIZAR cambiado de `Error` (rojo) a `Primary` (verde) con texto `Color.Black` |
-| `screens/MetaCompletadaScreen.kt` | Añadido `Box.with(Modifier.background(Color.Black))`. Trofeo: 48→36dp. Título: 16→14sp. Tarjeta meta: `Surface.copy(0.6f)` con `RoundedCornerShape(20dp)`. Icono meta: 36→28dp. Fuente valor: 16→14sp. Botón: 14→12sp, altura 40→36dp. Padding ajustado a 20dp horizontal, 28dp vertical |
-
-#### Comparativa de métricas de espaciado
-
-| Elemento | Antes | Después |
-|----------|-------|---------|
-| Padding horizontal | 16dp | 20dp |
-| Padding vertical | 12dp | 28dp |
-| Icono correr | 32dp | 24dp |
-| Fuente "Ruta Libre" | 14sp | 12sp |
-| Fuente tiempo | 32sp | 28sp |
-| Fuente métrica (label) | 11sp | 10sp |
-| Fuente métrica (valor) | 14sp | 12sp |
-| Fuente botón | 14sp | 12sp |
-| Altura botón | 40dp | 36dp |
-| Icono métrica | 18dp | 14dp |
-| Fondo métrica | — (transparente) | `Surface 60%` + `RoundedCornerShape(20dp)` |
-
-### 27/06/2026 — Corrección de guardado de entrenamientos y logging
-
-Se corrigió un bug crítico que impedía que los datos del entrenamiento se guardaran en la base de datos al finalizar desde el smartwatch.
-
-#### Problema detectado
-
-| Problema | Causa | Solución |
-|----------|-------|----------|
-| Los entrenamientos no se guardaban en BD al finalizar | `finalizar()` capturaba `idEntrenamiento` de un snapshot del estado antes de que la coroutine de `iniciar()` respondiera. Además, los errores de red eran tragados silenciosamente (`onFailure = { }`). | Se movió la lectura de `idEntrenamiento` **dentro** de la coroutine en `finalizar()`, se cambió el valor inicial de `-1` a `null`, y se agregó `Log.e(...)` en todos los `onFailure`. |
-
-#### Archivos modificados
-
-| Archivo | Cambios |
-|---------|---------|
-| `viewmodel/WearEntrenamientoViewModel.kt` | Se cambió `idEntrenamiento = -1` → `idEntrenamiento = null`. Se movió `val state = _uiState.value` dentro de la coroutine de `finalizar()`. Se agregó `import android.util.Log` y logging con tag `WearVM` en todos los `onFailure`. Se eliminaron imports no usados (`CumulativeDataPoint`, `DataPoint`). |

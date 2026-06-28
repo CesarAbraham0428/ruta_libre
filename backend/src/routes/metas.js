@@ -43,6 +43,76 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/metas/:idMetas
+router.put('/:idMetas', async (req, res) => {
+  const idMetas = parseInt(req.params.idMetas);
+  if (isNaN(idMetas)) {
+    return res.status(400).json({ error: 'ID de meta no válido' });
+  }
+
+  const { tipoMeta, valorObjetivo, valorActual, terminada } = req.body;
+
+  try {
+    const result = await db.query(
+      `UPDATE metas SET
+        tipo_meta = COALESCE($1, tipo_meta),
+        valor_objetivo = COALESCE($2, valor_objetivo),
+        valor_actual = COALESCE($3, valor_actual),
+        terminada = COALESCE($4, terminada)
+       WHERE id_metas = $5
+       RETURNING id_metas, id_usuario, tipo_meta, valor_objetivo, valor_actual, terminada`,
+      [
+        tipoMeta ? tipoMeta.toLowerCase() : null,
+        valorObjetivo ?? null,
+        valorActual ?? null,
+        terminada !== undefined ? terminada : null,
+        idMetas
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meta no encontrada' });
+    }
+
+    const meta = result.rows[0];
+    res.json({
+      idMetas: meta.id_metas,
+      idUsuario: meta.id_usuario,
+      tipoMeta: meta.tipo_meta.toUpperCase(),
+      valorObjetivo: parseFloat(meta.valor_objetivo),
+      valorActual: parseFloat(meta.valor_actual),
+      terminada: meta.terminada
+    });
+  } catch (error) {
+    console.error('Error en PUT /metas/:idMetas:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/metas/:idMetas
+router.delete('/:idMetas', async (req, res) => {
+  const idMetas = parseInt(req.params.idMetas);
+  if (isNaN(idMetas)) {
+    return res.status(400).json({ error: 'ID de meta no válido' });
+  }
+
+  try {
+    const result = await db.query(
+      'DELETE FROM metas WHERE id_metas = $1 RETURNING id_metas',
+      [idMetas]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Meta no encontrada' });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error en DELETE /metas/:idMetas:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/metas/usuario/:idUsuario
 router.get('/usuario/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
