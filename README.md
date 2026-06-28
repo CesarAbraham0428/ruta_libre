@@ -300,3 +300,37 @@ Colores de métricas deportivas:
 5. Las **notificaciones** de logros se sincronizan marcando `leida_movil` / `leida_smartwatch`
 
 Todos los dispositivos se vinculan al mismo `id_usuario`.
+
+---
+
+## Configuración por desarrollador
+
+### Marco (emulador)
+
+La configuración por defecto funciona sin cambios:
+
+- **`core/src/main/java/mx/utng/cala/core/data/remote/RetrofitClient.kt`**:
+  ```kotlin
+  private const val BASE_URL = "http://10.0.2.2:3000/api/"
+  ```
+- El emulador traduce `10.0.2.2` al `localhost` de la laptop automáticamente.
+- Solo asegúrate de que el backend esté corriendo antes de ejecutar la app.
+
+### César (dispositivo físico por USB)
+
+El celular no puede ver `10.0.2.2`. Hay que usar `adb reverse` para crear un túnel USB:
+
+1. **Cambiar la URL base** en `RetrofitClient.kt`:
+   ```kotlin
+   private const val BASE_URL = "http://localhost:3000/api/"
+   ```
+
+2. **Conectar el celular por USB** y ejecutar este comando en la terminal:
+   ```bash
+   C:\Users\lopez\AppData\Local\Android\Sdk\platform-tools\adb.exe reverse tcp:3000 tcp:3000
+   ```
+   > Si `adb` está en el `PATH`, basta con `adb reverse tcp:3000 tcp:3000`.
+
+3. **Rebuild** la app desde Android Studio y ejecútala en el celular.
+
+> ⚠️ El comando `adb reverse` hay que volverlo a ejecutar cada vez que se desconecte o reconecte el dispositivo USB.
