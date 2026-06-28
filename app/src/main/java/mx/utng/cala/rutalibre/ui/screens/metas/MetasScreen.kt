@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -45,6 +46,8 @@ fun MetasScreen(
     val authState by authViewModel.uiState.collectAsState()
     val metasState by metasViewModel.uiState.collectAsState()
 
+    var metaToDelete by remember { mutableStateOf<MetaResponse?>(null) }
+
     LaunchedEffect(Unit) {
         authState.idUsuario?.let { id ->
             metasViewModel.cargarMetas(id)
@@ -58,7 +61,7 @@ fun MetasScreen(
                     Text(
                         "Metas",
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -106,16 +109,100 @@ fun MetasScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(metasState.metas) { meta ->
-                        MetaCard(meta = meta)
+                        MetaCard(
+                            meta = meta,
+                            onEdit = {
+                                navController.navigate(Routes.editarMeta(meta.idMetas))
+                            },
+                            onDelete = {
+                                metaToDelete = meta
+                            }
+                        )
                     }
                 }
             }
         }
     }
+
+    metaToDelete?.let { meta ->
+        val config = tipoMetaIcons[meta.tipoMeta]
+            ?: MetaTypeInfo(Icons.Default.DirectionsRun, OnSurfaceVariant, "unidades")
+        val nombreMeta = meta.tipoMeta.replace("_", " ").lowercase()
+            .replaceFirstChar { it.uppercase() }
+
+        AlertDialog(
+            onDismissRequest = { metaToDelete = null },
+            containerColor = SurfaceVariant,
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = Error,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Eliminar meta",
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = OnSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Estás seguro de que deseas eliminar la meta de $nombreMeta?",
+                    textAlign = TextAlign.Center,
+                    color = OnSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        authState.idUsuario?.let { id ->
+                            metasViewModel.eliminarMeta(id, meta.idMetas)
+                        }
+                        metaToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Error
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                ) {
+                    Text(
+                        "ELIMINAR",
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { metaToDelete = null },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = OnSurface
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                ) {
+                    Text(
+                        "CANCELAR",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun MetaCard(meta: MetaResponse) {
+fun MetaCard(
+    meta: MetaResponse,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     val typeInfo = tipoMetaIcons[meta.tipoMeta]
         ?: MetaTypeInfo(Icons.Default.DirectionsRun, OnSurfaceVariant, "unidades")
 
@@ -157,14 +244,14 @@ fun MetaCard(meta: MetaResponse) {
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = { /* TODO: Editar meta */ }) {
+                    IconButton(onClick = onEdit) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = "Editar",
                             tint = OnSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { /* TODO: Eliminar meta */ }) {
+                    IconButton(onClick = onDelete) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Eliminar",

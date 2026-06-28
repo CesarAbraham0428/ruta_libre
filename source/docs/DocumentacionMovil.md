@@ -27,6 +27,7 @@ Define las rutas de navegación como constantes en el objeto `Routes`:
 | Resumen | `RESUMEN` | `"resumen/{idEntrenamiento}"` |
 | Metas | `METAS` | `"metas"` |
 | Crear meta | `CREAR_META` | `"crear_meta"` |
+| Editar meta | `EDITAR_META` | `"editar_meta/{idMeta}"` |
 | Grupos | `GRUPOS` | `"grupos"` |
 | Perfil | `PERFIL` | `"perfil"` |
 
@@ -42,6 +43,7 @@ composable(Routes.ENTRENAMIENTO) -> EntrenamientoScreen(navController)
 composable(Routes.RESUMEN)      -> ResumenScreen(navController)
 composable(Routes.METAS)         -> MetasScreen(navController, metasViewModel, authViewModel)
 composable(Routes.CREAR_META)   -> CrearMetaScreen(navController, metasViewModel, authViewModel)
+composable(Routes.EDITAR_META)  -> EditarMetaScreen(navController, metasViewModel, authViewModel, idMeta)
 composable(Routes.GRUPOS)       -> GruposScreen(navController)
 composable(Routes.PERFIL)       -> PerfilScreen(navController)
 ```
@@ -132,9 +134,33 @@ Pantalla principal de metas personales de actividad física.
   - **Botones de editar** (lápiz) y **eliminar** (basura) a la derecha
   - **Barra de progreso** `LinearProgressIndicator` coloreada según el tipo de meta
   - **Texto** "Actual: X unidad" y "Objetivo: Y unidad" debajo de la barra
+- **Acciones:**
+  - **Editar** — Navega a `EditarMetaScreen` con el ID de la meta
+  - **Eliminar** — Muestra un `AlertDialog` de confirmación con icono de basura rojo, título "Eliminar meta", mensaje de confirmación, y botones CANCELAR / ELIMINAR
 - **Carga:** Llama a `metasViewModel.cargarMetas(idUsuario)` al iniciar
 - **Estados:** Muestra `CircularProgressIndicator` mientras carga, o texto "Aún no tienes metas. ¡Crea una!" si está vacía
 - **Colores:** Fondo `Background`, tarjetas `SurfaceVariant`
+
+### EditarMetaScreen
+
+**Archivo:** `ui/screens/metas/EditarMetaScreen.kt`
+**ViewModel:** `MetasViewModel`
+
+Pantalla para editar el valor objetivo de una meta existente.
+
+- **Parámetro de ruta:** `idMeta` (ID de la meta a editar)
+- **TopBar:** Título "Editar meta" centrado con flecha de retroceso
+- **Card central** con fondo `SurfaceVariant` y bordes redondeados que contiene:
+  - **Icono y nombre del tipo** de meta (ej. "Distancia" con icono de ubicación verde)
+  - **"Meta actual"** — Valor objetivo actual con unidad (ej. "15 km")
+  - **"Nueva meta"** — `OutlinedTextField` para ingresar el nuevo valor numérico con:
+    - Valor actual precargado en el campo
+    - Suffix con la unidad correspondiente al tipo de meta
+- **Botones inferiores:**
+  - **CANCELAR** (`OutlinedButton`) — navega de regreso
+  - **GUARDAR** (`Button` verde `Primary`) — llama a `metasViewModel.editarMeta(idUsuario, idMetas, nuevoValor)`
+- **Comportamiento:** Al actualizarse exitosamente (`isMetaUpdated = true`), limpia el estado y navega de regreso automáticamente
+- **Validación:** Botón GUARDAR deshabilitado si el campo está vacío o hay una carga en curso
 
 ### CrearMetaScreen
 
@@ -256,6 +282,8 @@ Información del perfil del usuario.
 | `isLoading` | Boolean | Indica si hay una petición en curso |
 | `metas` | List<MetaResponse> | Metas del usuario |
 | `isMetaCreated` | Boolean | `true` después de crear una meta exitosamente |
+| `isMetaUpdated` | Boolean | `true` después de actualizar una meta exitosamente |
+| `isMetaDeleted` | Boolean | `true` después de eliminar una meta exitosamente |
 | `error` | String? | Mensaje de error |
 
 **Funciones:**
@@ -264,8 +292,12 @@ Información del perfil del usuario.
 |---|---|---|
 | `cargarMetas(idUsuario)` | `GET /api/metas/usuario/{idUsuario}` | Obtiene las metas del usuario |
 | `crearMeta(idUsuario, tipo, valor)` | `POST /api/metas` | Crea una nueva meta |
+| `editarMeta(idUsuario, idMetas, nuevoValor)` | `PUT /api/metas/{idMetas}` | Actualiza el valor objetivo de una meta |
+| `eliminarMeta(idUsuario, idMetas)` | `DELETE /api/metas/{idMetas}` | Elimina una meta |
 | `clearError()` | — | Limpia el mensaje de error |
 | `resetMetaCreatedState()` | — | Resetea el flag de meta creada |
+| `resetMetaUpdatedState()` | — | Resetea el flag de meta actualizada |
+| `resetMetaDeletedState()` | — | Resetea el flag de meta eliminada |
 
 ---
 
@@ -306,5 +338,6 @@ El módulo móvil utiliza un tema oscuro con los siguientes colores:
 | Resumen | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
 | Metas | ✅ Completada | ✅ Conectado | ✅ Funcional |
 | Crear Meta | ✅ Completada | ✅ Conectado | ✅ Funcional |
+| Editar Meta | ✅ Completada | ✅ Conectado | ✅ Funcional |
 | Grupos | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
 | Perfil | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
