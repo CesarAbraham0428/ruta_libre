@@ -26,6 +26,7 @@ Define las rutas de navegación como constantes en el objeto `Routes`:
 | Entrenamiento | `ENTRENAMIENTO` | `"entrenamiento/{idEntrenamiento}"` |
 | Resumen | `RESUMEN` | `"resumen/{idEntrenamiento}"` |
 | Metas | `METAS` | `"metas"` |
+| Crear meta | `CREAR_META` | `"crear_meta"` |
 | Grupos | `GRUPOS` | `"grupos"` |
 | Perfil | `PERFIL` | `"perfil"` |
 
@@ -39,7 +40,8 @@ composable(Routes.REGISTER)     -> RegisterScreen(navController, authViewModel)
 composable(Routes.HOME)         -> HomeScreen(navController)
 composable(Routes.ENTRENAMIENTO) -> EntrenamientoScreen(navController)
 composable(Routes.RESUMEN)      -> ResumenScreen(navController)
-composable(Routes.METAS)        -> MetasScreen(navController)
+composable(Routes.METAS)         -> MetasScreen(navController, metasViewModel, authViewModel)
+composable(Routes.CREAR_META)   -> CrearMetaScreen(navController, metasViewModel, authViewModel)
 composable(Routes.GRUPOS)       -> GruposScreen(navController)
 composable(Routes.PERFIL)       -> PerfilScreen(navController)
 ```
@@ -121,12 +123,39 @@ Resumen de la actividad al finalizar el entrenamiento.
 **Archivo:** `ui/screens/metas/MetasScreen.kt`
 **ViewModel:** `MetasViewModel`
 
-Gestión de metas personales de actividad física.
+Pantalla principal de metas personales de actividad física.
 
-- **Lista:** Muestra las metas creadas por el usuario
-- **Acciones:** Botón "Nueva meta" para agregar una meta
-- **Conexión backend (pendiente):** Debe conectarse al `MetasViewModel` que expone `metas: List<MetaResponse>` y funciones `cargarMetas(idUsuario)` y `crearMeta(idUsuario, tipo, valor)`
-- **Tipos de meta:** `PASOS`, `CALORIAS`, `DISTANCIA`, `TIEMPO`
+- **TopBar:** Título "Metas" centrado con flecha de retroceso a la izquierda y botón `+` (verde) a la derecha que navega a `CrearMetaScreen`
+- **Lista de metas:** `LazyColumn` con tarjetas (`MetaCard`) que muestran por cada meta:
+  - **Icono** a la izquierda, coloreado según el tipo (zapato azul para pasos, fuego naranja para calorías, ubicación verde para distancia, reloj morado para tiempo)
+  - **Nombre del tipo** y **valor con unidad** (ej. "Pasos / 8000 pasos")
+  - **Botones de editar** (lápiz) y **eliminar** (basura) a la derecha
+  - **Barra de progreso** `LinearProgressIndicator` coloreada según el tipo de meta
+  - **Texto** "Actual: X unidad" y "Objetivo: Y unidad" debajo de la barra
+- **Carga:** Llama a `metasViewModel.cargarMetas(idUsuario)` al iniciar
+- **Estados:** Muestra `CircularProgressIndicator` mientras carga, o texto "Aún no tienes metas. ¡Crea una!" si está vacía
+- **Colores:** Fondo `Background`, tarjetas `SurfaceVariant`
+
+### CrearMetaScreen
+
+**Archivo:** `ui/screens/metas/CrearMetaScreen.kt`
+**ViewModel:** `MetasViewModel`
+
+Pantalla para crear una nueva meta personal.
+
+- **TopBar:** Título "Crear meta" centrado con flecha de retroceso
+- **Card central** con fondo `SurfaceVariant` y bordes redondeados que contiene:
+  - **"Tipo de meta"** — `ExposedDropdownMenuBox` con:
+    - `OutlinedTextField` de solo lectura con icono del tipo seleccionado y flecha desplegable
+    - Menú desplegable con las 4 opciones: Pasos (zapato), Calorías (fuego), Distancia (ubicación), Tiempo (reloj)
+  - **"Meta"** — `OutlinedTextField` para ingresar el valor numérico con:
+    - Placeholder "0"
+    - Suffix con la unidad correspondiente al tipo seleccionado (pasos, kcal, km, min)
+- **Botones inferiores:**
+  - **CANCELAR** (`OutlinedButton`) — navega de regreso
+  - **GUARDAR** (`Button` verde `Primary`) — llama a `metasViewModel.crearMeta(idUsuario, tipo, valor)`
+- **Comportamiento:** Al crearse exitosamente (`isMetaCreated = true`), limpia el estado y navega de regreso automáticamente
+- **Validación:** Botón GUARDAR deshabilitado si el campo está vacío o hay una carga en curso
 
 ### GruposScreen
 
@@ -226,6 +255,7 @@ Información del perfil del usuario.
 |---|---|---|
 | `isLoading` | Boolean | Indica si hay una petición en curso |
 | `metas` | List<MetaResponse> | Metas del usuario |
+| `isMetaCreated` | Boolean | `true` después de crear una meta exitosamente |
 | `error` | String? | Mensaje de error |
 
 **Funciones:**
@@ -234,6 +264,8 @@ Información del perfil del usuario.
 |---|---|---|
 | `cargarMetas(idUsuario)` | `GET /api/metas/usuario/{idUsuario}` | Obtiene las metas del usuario |
 | `crearMeta(idUsuario, tipo, valor)` | `POST /api/metas` | Crea una nueva meta |
+| `clearError()` | — | Limpia el mensaje de error |
+| `resetMetaCreatedState()` | — | Resetea el flag de meta creada |
 
 ---
 
@@ -245,8 +277,11 @@ El módulo móvil utiliza un tema oscuro con los siguientes colores:
 |---|---|---|
 | `Primary` | `#7ED957` | Verde — color de marca, botones, enlaces |
 | `Background` | `#050B17` | Fondo principal oscuro |
-| `Surface` | `#0B1424` | Fondo de campos de texto y tarjetas |
-| `OnSurface` | `#F5F5F5` | Color del texto |
+| `Surface` | `#0B1424` | Fondo de campos de texto |
+| `SurfaceVariant` | `#111D31` | Fondo de tarjetas y contenedores |
+| `OnSurface` | `#F5F5F5` | Color del texto principal |
+| `OnSurfaceVariant` | `#B0B8C5` | Color del texto secundario |
+| `Outline` | `#2A3B55` | Bordes de campos de texto |
 | `Error` | `#FF5252` | Mensajes de error |
 
 **Colores de métricas deportivas:**
@@ -269,6 +304,7 @@ El módulo móvil utiliza un tema oscuro con los siguientes colores:
 | Home | ✅ Completada | — | — |
 | Entrenamiento | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
 | Resumen | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
-| Metas | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
+| Metas | ✅ Completada | ✅ Conectado | ✅ Funcional |
+| Crear Meta | ✅ Completada | ✅ Conectado | ✅ Funcional |
 | Grupos | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |
 | Perfil | ⚠️ Placeholder | ❌ No conectado | ❌ No funcional |

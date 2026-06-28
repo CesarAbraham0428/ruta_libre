@@ -1,16 +1,25 @@
 package mx.utng.cala.rutalibre.ui.screens.metas
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import mx.utng.cala.core.data.model.TipoMeta
+import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MetasViewModel
 
@@ -25,8 +34,19 @@ fun CrearMetaScreen(
     val metasState by metasViewModel.uiState.collectAsState()
 
     var expanded by remember { mutableStateOf(false) }
-    var selectedTipo by remember { mutableStateOf(TipoMeta.DISTANCIA) }
+    var selectedTipo by remember { mutableStateOf(TipoMeta.PASOS) }
     var valorObjetivo by remember { mutableStateOf("") }
+
+    val tipoMetaConfig = remember {
+        mapOf(
+            TipoMeta.PASOS to TipoMetaInfo(Icons.Default.DirectionsRun, "Pasos", "pasos"),
+            TipoMeta.CALORIAS to TipoMetaInfo(Icons.Default.LocalFireDepartment, "Calorías", "kcal"),
+            TipoMeta.DISTANCIA to TipoMetaInfo(Icons.Default.Place, "Distancia", "km"),
+            TipoMeta.TIEMPO to TipoMetaInfo(Icons.Default.AccessTime, "Tiempo de actividad", "min")
+        )
+    }
+
+    val currentConfig = tipoMetaConfig[selectedTipo] ?: tipoMetaConfig[TipoMeta.PASOS]!!
 
     LaunchedEffect(metasState.isMetaCreated) {
         if (metasState.isMetaCreated) {
@@ -38,90 +58,217 @@ fun CrearMetaScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Crear Nueva Meta") },
+                title = {
+                    Text(
+                        "Crear meta",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Background
+                )
             )
-        }
+        },
+        containerColor = Background
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            metasState.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceVariant)
             ) {
-                OutlinedTextField(
-                    value = selectedTipo.name,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Tipo de meta") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                        .padding(16.dp)
                 ) {
-                    TipoMeta.entries.forEach { tipo ->
-                        DropdownMenuItem(
-                            text = { Text(tipo.name) },
-                            onClick = {
-                                selectedTipo = tipo
-                                expanded = false
-                            }
+                    metasState.error?.let { error ->
+                        Text(
+                            text = error,
+                            color = Error,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
                     }
+
+                    Text(
+                        text = "Tipo de meta",
+                        color = OnSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = currentConfig.displayName,
+                            onValueChange = {},
+                            readOnly = true,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = currentConfig.icon,
+                                    contentDescription = null,
+                                    tint = Primary
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Expandir",
+                                    tint = OnSurfaceVariant
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Outline,
+                                unfocusedBorderColor = Outline,
+                                focusedContainerColor = Surface,
+                                unfocusedContainerColor = Surface
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            containerColor = SurfaceVariant
+                        ) {
+                            TipoMeta.entries.forEach { tipo ->
+                                val config = tipoMetaConfig[tipo] ?: return@forEach
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = config.icon,
+                                                contentDescription = null,
+                                                tint = Primary
+                                            )
+                                            Text(config.displayName)
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedTipo = tipo
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        text = "Meta",
+                        color = OnSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = valorObjetivo,
+                        onValueChange = { valorObjetivo = it },
+                        placeholder = { Text("0", color = OnSurfaceVariant) },
+                        suffix = {
+                            Text(
+                                text = currentConfig.unit,
+                                color = OnSurfaceVariant
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Outline,
+                            unfocusedBorderColor = Outline,
+                            focusedContainerColor = Surface,
+                            unfocusedContainerColor = Surface,
+                            focusedTextColor = OnSurface,
+                            unfocusedTextColor = OnSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = valorObjetivo,
-                onValueChange = { valorObjetivo = it },
-                label = { Text("Valor objetivo") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    authState.idUsuario?.let { id ->
-                        val valor = valorObjetivo.toDoubleOrNull()
-                        if (valor != null && valor > 0) {
-                            metasViewModel.crearMeta(id, selectedTipo, valor)
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !metasState.isLoading && valorObjetivo.isNotEmpty()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (metasState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                } else {
-                    Text("Guardar Meta")
+                OutlinedButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = OnSurface
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder
+                ) {
+                    Text(
+                        "CANCELAR",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        authState.idUsuario?.let { id ->
+                            val valor = valorObjetivo.toDoubleOrNull()
+                            if (valor != null && valor > 0) {
+                                metasViewModel.crearMeta(id, selectedTipo, valor)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Primary
+                    ),
+                    enabled = !metasState.isLoading && valorObjetivo.isNotEmpty()
+                ) {
+                    if (metasState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Background
+                        )
+                    } else {
+                        Text(
+                            "GUARDAR",
+                            color = Background,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private data class TipoMetaInfo(
+    val icon: ImageVector,
+    val displayName: String,
+    val unit: String
+)
