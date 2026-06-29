@@ -24,8 +24,7 @@ fun RutaLibreTheme(
         onTertiary = OnBackground,
         onBackground = OnBackground,
         onSurface = OnSurface,
-        onSurfaceVariant = OnSurfaceVariant,
-        outline = Outline
+        onSurfaceVariant = OnSurfaceVariant
     )
     MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }

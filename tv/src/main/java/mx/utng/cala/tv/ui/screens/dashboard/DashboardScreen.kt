@@ -6,8 +6,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.tv.material3.Card
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavController) {
     Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {

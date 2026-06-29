@@ -12,6 +12,9 @@ import mx.utng.cala.core.data.repository.MetaRepository
 data class MetasUiState(
     val isLoading: Boolean = false,
     val metas: List<MetaResponse> = emptyList(),
+    val isMetaCreated: Boolean = false,
+    val isMetaUpdated: Boolean = false,
+    val isMetaDeleted: Boolean = false,
     val error: String? = null
 )
 
@@ -23,7 +26,7 @@ class MetasViewModel : ViewModel() {
 
     fun cargarMetas(idUsuario: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             repository.getMetas(idUsuario).fold(
                 onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, metas = it) },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
@@ -33,11 +36,56 @@ class MetasViewModel : ViewModel() {
 
     fun crearMeta(idUsuario: Int, tipo: TipoMeta, valor: Double) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaCreated = false)
             repository.crearMeta(idUsuario, tipo, valor).fold(
-                onSuccess = { cargarMetas(idUsuario) },
+                onSuccess = { 
+                    cargarMetas(idUsuario)
+                    _uiState.value = _uiState.value.copy(isMetaCreated = true)
+                },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
             )
         }
+    }
+
+    fun editarMeta(idUsuario: Int, idMetas: Int, nuevoValor: Double) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaUpdated = false)
+            repository.actualizarMeta(idMetas, nuevoValor).fold(
+                onSuccess = {
+                    cargarMetas(idUsuario)
+                    _uiState.value = _uiState.value.copy(isMetaUpdated = true)
+                },
+                onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
+            )
+        }
+    }
+
+    fun eliminarMeta(idUsuario: Int, idMetas: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaDeleted = false)
+            repository.eliminarMeta(idMetas).fold(
+                onSuccess = {
+                    cargarMetas(idUsuario)
+                    _uiState.value = _uiState.value.copy(isMetaDeleted = true)
+                },
+                onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
+            )
+        }
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    fun resetMetaCreatedState() {
+        _uiState.value = _uiState.value.copy(isMetaCreated = false)
+    }
+
+    fun resetMetaUpdatedState() {
+        _uiState.value = _uiState.value.copy(isMetaUpdated = false)
+    }
+
+    fun resetMetaDeletedState() {
+        _uiState.value = _uiState.value.copy(isMetaDeleted = false)
     }
 }
