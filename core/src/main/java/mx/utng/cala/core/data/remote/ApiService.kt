@@ -67,6 +67,12 @@ interface ApiService {
     @GET("grupos/{idGrupo}/ranking")
     suspend fun getRankingGrupo(@Path("idGrupo") idGrupo: Int): Response<RankingResponse>
 
+    @DELETE("grupos/{idGrupo}/miembros/{idUsuario}")
+    suspend fun salirDeGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Path("idUsuario") idUsuario: Int
+    ): Response<Unit>
+
     @GET("notificaciones/usuario/{idUsuario}")
     suspend fun getNotificaciones(@Path("idUsuario") idUsuario: Int): Response<List<NotificacionResponse>>
 
