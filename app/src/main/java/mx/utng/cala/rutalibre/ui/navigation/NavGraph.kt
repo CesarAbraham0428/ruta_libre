@@ -23,12 +23,14 @@ import mx.utng.cala.rutalibre.ui.screens.perfil.PerfilScreen
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MetasViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.GrupoViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.PerfilViewModel
 
 @Composable
 fun NavGraph(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
     val metasViewModel: MetasViewModel = viewModel()
     val grupoViewModel: GrupoViewModel = viewModel()
+    val perfilViewModel: PerfilViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
         composable(Routes.LOGIN) {
@@ -37,7 +39,7 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.REGISTER) {
             RegisterScreen(navController, authViewModel)
         }
-        composable(Routes.HOME) { HomeScreen(navController) }
+        composable(Routes.HOME) { HomeScreen(navController, authViewModel) }
         composable(Routes.ENTRENAMIENTO) { EntrenamientoScreen(navController) }
         composable(Routes.RESUMEN) { ResumenScreen(navController) }
         composable(Routes.METAS) { MetasScreen(navController, metasViewModel, authViewModel) }
@@ -65,6 +67,6 @@ fun NavGraph(navController: NavHostController) {
             val idUsuarioActual = authState.idUsuario ?: return@composable
             DetalleGrupoScreen(navController, grupoViewModel, idGrupo, nombreGrupo, idUsuarioActual)
         }
-        composable(Routes.PERFIL) { PerfilScreen(navController) }
+        composable(Routes.PERFIL) { PerfilScreen(navController, perfilViewModel, authViewModel) }
     }
 }
