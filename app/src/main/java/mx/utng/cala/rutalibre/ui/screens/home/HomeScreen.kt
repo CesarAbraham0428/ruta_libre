@@ -8,7 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
@@ -32,9 +32,6 @@ import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 
 @Composable
 fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
-    val authState by authViewModel.uiState.collectAsState()
-    val nombreUsuario = authState.nombre ?: "Usuario"
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -56,15 +53,10 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
             ) {
                 Column {
                     Text(
-                        text = "¡Hola, $nombreUsuario! 👋",
+                        text = "¿Listo para tu próxima ruta?",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = OnBackground
-                    )
-                    Text(
-                        text = "¿Listo para tu próxima ruta?",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = OnSurfaceVariant
                     )
                 }
             }
@@ -121,7 +113,7 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.DirectionsRun,
+                                imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
                                 contentDescription = "Iniciar",
                                 tint = Color(0xFF050B17),
                                 modifier = Modifier.size(36.dp)
