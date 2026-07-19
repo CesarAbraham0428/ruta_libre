@@ -193,11 +193,13 @@ Pantalla para editar el valor objetivo de una meta existente.
 ### GruposScreen
 
 **Archivo:** `ui/screens/grupos/GruposScreen.kt`
-**ViewModel:** Ninguno (`GrupoViewModel` existe pero no está conectado en NavGraph ni en la screen)
+**ViewModel:** `GrupoViewModel`, conectado a `GrupoRepository` para sincronizar los datos con la API.
+
+La implementación actual reemplaza los datos simulados: carga los grupos desde `GET /api/grupos/usuario/{idUsuario}` y ejecuta creación y unión mediante la API.
 
 Gestión de grupos con UI placeholder.
 
-- **Botones:** "Crear grupo" y "Unirse a grupo" con `onClick` vacío
+- **Botones:** "Crear grupo" y "Unirse a grupo", ejecutan las peticiones de creación y unión.
 - **Texto informativo:** "Tus grupos aparecerán aquí"
 
 ### PerfilScreen
@@ -280,7 +282,7 @@ Información del perfil con datos estáticos.
 | Función | Backend | Descripción |
 |---|---|---|
 | `cargarGrupos(idUsuario)` | `GET /api/grupos/usuario/{idUsuario}` | Obtiene los grupos del usuario |
-| `crearGrupo(nombre, descripcion)` | `POST /api/grupos` | Crea un nuevo grupo |
+| `crearGrupo(nombre, descripcion, idUsuario)` | `POST /api/grupos` | Crea un grupo y registra al creador como miembro |
 | `unirseGrupo(idUsuario, codigo)` | `POST /api/grupos/unirse` | Se une a un grupo con código |
 | `cargarMiembros(idGrupo)` | `GET /api/grupos/{idGrupo}/miembros` | Obtiene los miembros de un grupo |
 
@@ -344,6 +346,7 @@ Retrofit interface con `BASE_URL = "http://10.0.2.2:3000/api/"`.
 | GET | `grupos/usuario/{idUsuario}` | path | `List<GrupoResponse>` |
 | GET | `grupos/{idGrupo}/miembros` | path | `List<MiembroGrupoResponse>` |
 | GET | `grupos/{idGrupo}/ranking` | path | `RankingResponse` |
+| DELETE | `grupos/{idGrupo}/miembros/{idUsuario}` | path | `Unit` |
 | GET | `notificaciones/usuario/{idUsuario}` | path | `List<NotificacionResponse>` |
 | PUT | `notificaciones/{id}/leer-movil` | path | `Unit` |
 | PUT | `notificaciones/{id}/leer-wear` | path | `Unit` |
@@ -355,7 +358,7 @@ Retrofit interface con `BASE_URL = "http://10.0.2.2:3000/api/"`.
 | `AuthRepository` | `login()`, `register()` |
 | `EntrenamientoRepository` | `iniciar()`, `finalizar()`, `getActivo()`, `getHistorial()`, `getDashboardSemanal()`, `getComparacion()` |
 | `MetaRepository` | `crearMeta()`, `getMetas()`, `actualizarMeta()`, `eliminarMeta()` |
-| `GrupoRepository` | `crearGrupo()`, `unirseGrupo()`, `getGrupos()`, `getMiembros()`, `getRanking()` |
+| `GrupoRepository` | `crearGrupo()`, `unirseGrupo()`, `getGrupos()`, `getMiembros()`, `getRanking()`, `salirDeGrupo()` |
 | `RutaRepository` | `actualizar()`, `getRuta()` |
 | `NotificacionRepository` | `getNotificaciones()`, `marcarLeidaMovil()`, `marcarLeidaSmartwatch()` |
 
@@ -405,6 +408,185 @@ El módulo móvil utiliza un tema oscuro con los siguientes colores:
 
 ---
 
+## Próxima Iteración: Interfaz de Usuario y Flujo de Grupos
+
+Para el desarrollo inmediato del apartado de grupos, se priorizará el diseño de las pantallas y la interactividad visual de la interfaz. La lógica de datos se manejará de forma local utilizando simulaciones (datos en duro o *hardcoded*), sentando la base técnica para la posterior integración con la base de datos y la sincronización remota.
+
+### Flujo de Pantallas y Diseño Visual
+
+La interfaz se estructurará a partir de los mockups definidos en `source/assets/mockups/celular/`:
+
+1. **Pantalla Principal de Grupos (`Apartado Grupos.png`)**
+   * **Objetivo:** Mostrar los grupos a los que pertenece el corredor.
+   * **Componentes:**
+     * Un `LazyColumn` que carga y renderiza de forma reactiva la lista de grupos simulada en el ViewModel.
+     * Tarjetas (`Card`) para cada grupo que muestran el nombre del grupo, una descripción breve y su código único.
+     * Al presionar una tarjeta, se navega al detalle del grupo enviando su ID y nombre.
+     * Dos botones principales (estilo botón flotante o superior) para abrir los diálogos de **Crear Grupo** y **Unirse a Grupo**.
+
+2. **Crear Grupo (`Crear grupo.png`)**
+   * **Objetivo:** Permitir al usuario crear una comunidad de corredores localmente.
+   * **Componentes:**
+     * Un cuadro de diálogo flotante (`AlertDialog`) con campos de entrada de texto:
+       * `nombreGrupoEntrada` (obligatorio, con validación de no vacío).
+       * `descripcionGrupoEntrada` (opcional).
+     * Botones de "Cancelar" y "Guardar".
+     * Al presionar "Guardar", se genera un código aleatorio alfanumérico (ej: `GRP123`) y se añade el nuevo grupo a la lista local.
+
+3. **Unirse a Grupo (`Ingresar grupo.png`)**
+   * **Objetivo:** Unirse a un grupo existente mediante un código.
+   * **Componentes:**
+     * Un cuadro de diálogo flotante (`AlertDialog`) con el campo de entrada `codigoGrupoEntrada` (longitud de 6 caracteres).
+     * Al presionar "Unirse", se busca el grupo localmente. Si existe, se añade al listado del usuario; si no existe, se simula la unión exitosa creando un grupo genérico con ese código para fines de visualización.
+
+4. **Detalle del Grupo y Estadísticas (`Estadisticas Grupo.png` & `Miembros Grupo.png`)**
+   * **Objetivo:** Visualizar el rendimiento grupal y listar a los participantes del grupo seleccionado.
+   * **Componentes:**
+     * Un contenedor con pestañas (`TabRow` y `Tab`) controlado por el estado `pestanaSeleccionada` (0 para Estadísticas, 1 para Miembros).
+     * **Pestaña Estadísticas:**
+       * Tarjetas destacadas con la sumatoria del rendimiento total de todos los corredores del grupo (Distancia total, Pasos totales, Calorías totales, Tiempo total).
+       * Tabla de clasificación (Ranking) que lista a los integrantes ordenados de mayor a menor según su kilometraje o pasos, mostrando su rendimiento individual de forma simulada.
+     * **Pestaña Miembros:**
+       * Un `LazyColumn` con la lista de participantes del grupo, mostrando sus avatares o iniciales, nombres y nombre de usuario.
+
+---
+
+### Configuración del Flujo de Navegación
+
+Se registrará la nueva pantalla de detalle en el NavGraph móvil y se declarará su ruta en `Routes`:
+
+#### [Routes.kt](file:///d:/02 - Universidad/09 - Noveno Cuatrimestre/Desarrollo para dispositivos Inteligentes/unidad 1/aplicaciones/rutaLibre/app/src/main/java/mx/utng/cala/rutalibre/ui/navigation/Routes.kt)
+```kotlin
+const val DETALLE_GRUPO = "detalle_grupo/{idGrupo}/{nombreGrupo}"
+fun detalleGrupo(idGrupo: Int, nombreGrupo: String) = "detalle_grupo/$idGrupo/$nombreGrupo"
+```
+
+#### [NavGraph.kt](file:///d:/02 - Universidad/09 - Noveno Cuatrimestre/Desarrollo%20para%20dispositivos%20Inteligentes/unidad%201/aplicaciones/rutaLibre/app/src/main/java/mx/utng/cala/rutalibre/ui/navigation/NavGraph.kt)
+```kotlin
+val grupoViewModel: GrupoViewModel = viewModel()
+
+composable(Routes.GRUPOS) {
+    GruposScreen(navController, grupoViewModel, authViewModel)
+}
+composable(
+    route = Routes.DETALLE_GRUPO,
+    arguments = listOf(
+        navArgument("idGrupo") { type = NavType.IntType },
+        navArgument("nombreGrupo") { type = NavType.StringType }
+    )
+) { entradaBackStack ->
+    val idGrupo = entradaBackStack.arguments?.getInt("idGrupo") ?: return@composable
+    val nombreGrupo = entradaBackStack.arguments?.getString("nombreGrupo") ?: ""
+    DetalleGrupoScreen(navController, grupoViewModel, idGrupo, nombreGrupo)
+}
+```
+
+---
+
+### Implementación del ViewModel Simulador (Español)
+
+Para habilitar las pruebas locales de las pantallas y flujos, el `GrupoViewModel` encapsulará los datos simulados y las operaciones básicas en memoria local:
+
+```kotlin
+// Clases de datos del dominio simuladas en español
+data class GrupoSimulado(
+    val idGrupo: Int,
+    val nombre: String,
+    val codigo: String,
+    val descripcion: String?
+)
+
+data class MiembroSimulado(
+    val idUsuario: Int,
+    val nombre: String,
+    val nombreUsuario: String,
+    val distanciaAcumulada: Double,
+    val pasosAcumulados: Int,
+    val caloriasAcumuladas: Int,
+    val tiempoAcumulado: Int
+)
+
+data class EstadoUiGrupos(
+    val listaGrupos: List<GrupoSimulado> = emptyList(),
+    val listaMiembros: List<MiembroSimulado> = emptyList(),
+    val estaCargando: Boolean = false,
+    val mensajeError: String? = null
+)
+
+class GrupoViewModel : ViewModel() {
+
+    private val _estadoUi = MutableStateFlow(EstadoUiGrupos())
+    val estadoUi: StateFlow<EstadoUiGrupos> = _estadoUi
+
+    init {
+        inicializarDatosEjemplo()
+    }
+
+    private fun inicializarDatosEjemplo() {
+        _estadoUi.value = _estadoUi.value.copy(
+            listaGrupos = listOf(
+                GrupoSimulado(1, "Corredores del Norte", "CORR01", "Grupo para entusiastas del running en la zona norte."),
+                GrupoSimulado(2, "Club Ruta Libre GIDS", "RLGIDS", "Comunidad oficial de la materia de Dispositivos Inteligentes.")
+            ),
+            listaMiembros = listOf(
+                MiembroSimulado(101, "César Abraham López", "cesar_lopez", 25.4, 32000, 1500, 7200),
+                MiembroSimulado(102, "Marco Antonio Martínez", "marco_martinez", 22.1, 28000, 1300, 6600),
+                MiembroSimulado(103, "Juan Pérez Gómez", "juanito_run", 15.0, 19000, 950, 4800)
+            )
+        )
+    }
+
+    fun cargarGruposDeUsuario(idUsuario: Int) {
+        // Simulación: Los grupos ya se encuentran en memoria
+    }
+
+    fun crearNuevoGrupo(nombre: String, descripcion: String?) {
+        val nuevoCodigo = "GRP" + (10..99).random()
+        val nuevoGrupo = GrupoSimulado(
+            idGrupo = _estadoUi.value.listaGrupos.size + 1,
+            nombre = nombre,
+            codigo = nuevoCodigo,
+            descripcion = descripcion
+        )
+        _estadoUi.value = _estadoUi.value.copy(
+            listaGrupos = _estadoUi.value.listaGrupos + nuevoGrupo
+        )
+    }
+
+    fun unirseAGrupoConCodigo(idUsuario: Int, codigo: String) {
+        val grupoExiste = _estadoUi.value.listaGrupos.any { it.codigo == codigo }
+        if (!grupoExiste) {
+            val nuevoGrupo = GrupoSimulado(
+                idGrupo = _estadoUi.value.listaGrupos.size + 1,
+                nombre = "Grupo Unido: $codigo",
+                codigo = codigo,
+                descripcion = "Grupo al que te uniste con el código de invitación $codigo."
+            )
+            _estadoUi.value = _estadoUi.value.copy(
+                listaGrupos = _estadoUi.value.listaGrupos + nuevoGrupo
+            )
+        }
+    }
+}
+```
+
+---
+
+### Estados Locales de UI Requeridos (Compose)
+
+Para la interactividad fluida de las vistas, se definen los siguientes estados locales que deberán manejarse en las pantallas correspondientes:
+
+| Pantalla / Componente | Variable de Estado (Español) | Tipo | Descripción |
+|---|---|---|---|
+| `GruposScreen` | `mostrarDialogoCrear` | `MutableState<Boolean>` | Controla la visibilidad del diálogo para crear grupo. |
+| `GruposScreen` | `mostrarDialogoUnirse` | `MutableState<Boolean>` | Controla la visibilidad del diálogo para unirse con código. |
+| `GruposScreen` (Crear) | `nombreGrupoTexto` | `MutableState<String>` | Almacena el valor ingresado en el campo de Nombre. |
+| `GruposScreen` (Crear) | `descripcionGrupoTexto` | `MutableState<String>` | Almacena el valor ingresado en el campo de Descripción. |
+| `GruposScreen` (Unirse)| `codigoGrupoTexto` | `MutableState<String>` | Almacena el valor del código de grupo ingresado. |
+| `DetalleGrupoScreen` | `pestanaSeleccionada` | `MutableState<Int>` | Determina la pestaña visible: 0 para Estadísticas, 1 para Miembros. |
+
+---
+
 ## Estado actual de implementación
 
 | Pantalla | UI | ViewModel | Backend |
@@ -417,5 +599,5 @@ El módulo móvil utiliza un tema oscuro con los siguientes colores:
 | Metas | ✅ Completa | ✅ Conectado | ✅ Funcional |
 | Crear Meta | ✅ Completa | ✅ Conectado | ✅ Funcional |
 | Editar Meta | ✅ Completa | ✅ Conectado | ✅ Funcional |
-| Grupos | ⚠️ Placeholder | ❌ No conectado | ❌ No usado |
+| Grupos | ⚠️ En Diseño de UI (Simulado) | ⚠️ Conectado (Local) | ❌ No usado (API) |
 | Perfil | ⚠️ Placeholder (estático) | ❌ No conectado | ❌ No usado |

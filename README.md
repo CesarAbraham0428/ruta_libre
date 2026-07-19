@@ -4,6 +4,14 @@ Aplicación multi-plataforma para monitoreo de actividad física (running) compu
 
 ---
 
+## Autores
+
+César Abraham López Aguilar
+
+Marco Antonio Martínez Ramírez
+
+Grupo: GIDS6093-E
+
 ## Arquitectura del proyecto
 
 ```
@@ -28,6 +36,92 @@ El proyecto usa **3 módulos de aplicación** y **1 módulo de librería** (`:co
 
 Ningún módulo de UI depende de otro. Cada uno importa `:core` para acceder a los datos.
 
+---
+
+## Objetivo
+Proporcionar una solución multiplataforma integral para el monitoreo de la actividad física (running), que permita a los usuarios registrar sus entrenamientos con precisión, visualizar métricas en tiempo real y fomentar la motivación a través de metas personales y competencia grupal, garantizando una experiencia fluida entre dispositivos móviles, smartwatches y televisores.
+
+## Descripción de las funcionalidades
+
+### Módulo Móvil (Android)
+- **Registro y Autenticación**: Acceso seguro para cada usuario.
+- **Monitoreo con GPS**: Seguimiento de rutas en tiempo real sobre un mapa.
+- **Métricas Deportivas**: Registro de pasos, distancia, calorías quemadas y tiempo.
+- **Gestión de Metas**: CRUD completo para definir objetivos diarios de entrenamiento.
+- **Grupos y Comunidad**: Crear o unirse a grupos mediante códigos para compartir logros.
+- **Notificaciones**: Avisos en tiempo real al cumplir objetivos o recibir logros.
+
+### Módulo Smartwatch (Wear OS)
+- **Inicio Rápido**: Lanzamiento inmediato de sesiones de entrenamiento desde la muñeca.
+- **Métricas Críticas**: Visualización optimizada de distancia, pasos y tiempo durante la carrera.
+- **Sincronización**: Envío automático de datos al backend al finalizar la actividad.
+
+### Módulo Smart TV (Android TV)
+- **Dashboard Estadístico**: Visualización de métricas semanales mediante gráficas interactivas.
+- **Ranking Grupal**: Comparativa de rendimiento entre los miembros de un grupo.
+- **Contenido Multimedia**: Acceso a videos de ejercicios y rutinas recomendadas.
+
+## Tecnologías utilizadas
+- **Lenguaje**: [Kotlin](https://kotlinlang.org/) (100% del proyecto).
+- **UI**: [Jetpack Compose](https://developer.android.com/jetpack/compose) (Móvil), Compose for Wear OS y Compose for TV.
+- **Arquitectura**: MVVM con separación de capas mediante el módulo `:core`.
+- **Red**: [Retrofit](https://square.github.io/retrofit/) y Gson para consumo de API REST.
+- **Backend**: Node.js con base de datos PostgreSQL + PostGIS.
+- **Inyección de Dependencias**: Repositorios centralizados en el módulo `:core`.
+
+---
+
+## Instrucciones para ejecutar el proyecto
+
+1. **Requisitos previos**:
+   - Android Studio (versión reciente compatible con Compose).
+   - Backend de Ruta Libre en ejecución (puerto 3000 por defecto).
+   - Base de datos PostgreSQL.
+
+2. **Configuración de la API**:
+   - Localiza el archivo `core/src/main/java/mx/utng/cala/core/data/remote/RetrofitClient.kt`.
+   - Ajusta la `BASE_URL` según tu entorno:
+     - **Emulador**: `http://10.0.2.2:3000/api/`
+     - **Físico**: `http://localhost:3000/api/` (requiere ADB reverse).
+
+3. **Ejecución en Dispositivo Físico (USB)**:
+   - Si usas un celular físico, ejecuta en la terminal:
+     ```bash
+     adb reverse tcp:3000 tcp:3000
+     ```
+
+4. **Despliegue**:
+   - Selecciona el módulo deseado (`app`, `wearos` o `tv`) en la configuración de ejecución de Android Studio y presiona **Run**.
+
+## Capturas de la aplicación
+
+### Autenticación
+<p align="center">
+  <img src="capturas_app/login.jpeg" width="30%" alt="Login">
+  <img src="capturas_app/registro.jpeg" width="30%" alt="Registro">
+</p>
+
+### Entrenamiento y Métricas
+<p align="center">
+  <img src="capturas_app/iniciar.png" width="30%" alt="Iniciar">
+  <img src="capturas_app/cronometro.png" width="30%" alt="Cronómetro">
+  <img src="capturas_app/metricas.png" width="30%" alt="Métricas">
+</p>
+<p align="center">
+  <img src="capturas_app/tiempo.png" width="30%" alt="Tiempo">
+  <img src="capturas_app/finalizar.png" width="30%" alt="Finalizar">
+</p>
+
+### Gestión de Metas (CRUD)
+<p align="center">
+  <img src="capturas_app/metas.png" width="30%" alt="Lista de Metas">
+  <img src="capturas_app/metas2.png" width="30%" alt="Metas 2">
+  <img src="capturas_app/crudMetas.jpeg" width="30%" alt="Crear Meta">
+</p>
+<p align="center">
+  <img src="capturas_app/editar.jpeg" width="30%" alt="Editar Meta">
+  <img src="capturas_app/eliminar.jpeg" width="30%" alt="Eliminar Meta">
+</p>
 ---
 
 ## Estructura detallada
@@ -303,6 +397,8 @@ Todos los dispositivos se vinculan al mismo `id_usuario`.
 
 ---
 
+
+
 ## Configuración por desarrollador
 
 ### Marco (emulador)
@@ -333,4 +429,4 @@ El celular no puede ver `10.0.2.2`. Hay que usar `adb reverse` para crear un tú
 
 3. **Rebuild** la app desde Android Studio y ejecútala en el celular.
 
-> ⚠️ El comando `adb reverse` hay que volverlo a ejecutar cada vez que se desconecte o reconecte el dispositivo USB.
+>  El comando `adb reverse` hay que volverlo a ejecutar cada vez que se desconecte o reconecte el dispositivo USB.

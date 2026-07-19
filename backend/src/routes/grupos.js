@@ -14,9 +14,13 @@ function generateGroupCode() {
 
 // POST /api/grupos (Crear grupo)
 router.post('/', async (req, res) => {
-  const { nombre, descripcion } = req.body;
+  const { nombre, descripcion, idUsuario } = req.body;
   if (!nombre) {
     return res.status(400).json({ error: 'El nombre del grupo es obligatorio' });
+  }
+
+  if (idUsuario !== undefined && (!Number.isInteger(idUsuario) || idUsuario <= 0)) {
+    return res.status(400).json({ error: 'ID de usuario no válido' });
   }
 
   let code = generateGroupCode();
@@ -24,12 +28,25 @@ router.post('/', async (req, res) => {
   
   // Reintentar si el código ya existe (límite de 5 intentos)
   while (attempts < 5) {
+    const client = await db.pool.connect();
     try {
-      const result = await db.query(
+      await client.query('BEGIN');
+      const result = await client.query(
         'INSERT INTO grupo (nombre, codigo, descripcion) VALUES ($1, $2, $3) RETURNING id_grupo, nombre, codigo, descripcion',
         [nombre, code, descripcion]
       );
       const grupo = result.rows[0];
+
+      // El creador se integra automáticamente al grupo para que aparezca
+      // inmediatamente en sus grupos y pueda consultar sus estadísticas.
+      if (idUsuario !== undefined) {
+        await client.query(
+          'INSERT INTO usuario_grupo (id_usuario, id_grupo, fecha_union) VALUES ($1, $2, NOW())',
+          [idUsuario, grupo.id_grupo]
+        );
+      }
+
+      await client.query('COMMIT');
       return res.status(201).json({
         idGrupo: grupo.id_grupo,
         nombre: grupo.nombre,
@@ -37,6 +54,7 @@ router.post('/', async (req, res) => {
         descripcion: grupo.descripcion
       });
     } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
       if (err.code === '23505') { // Error de clave única duplicada en PostgreSQL
         code = generateGroupCode();
         attempts++;
@@ -44,6 +62,8 @@ router.post('/', async (req, res) => {
         console.error('Error al insertar grupo:', err);
         return res.status(500).json({ error: 'Error interno del servidor' });
       }
+    } finally {
+      client.release();
     }
   }
   res.status(500).json({ error: 'No se pudo generar un código único para el grupo' });
@@ -78,6 +98,32 @@ router.post('/unirse', async (req, res) => {
     res.status(200).send();
   } catch (error) {
     console.error('Error en /grupos/unirse:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/grupos/:idGrupo/miembros/:idUsuario (Salir del grupo)
+router.delete('/:idGrupo/miembros/:idUsuario', async (req, res) => {
+  const idGrupo = parseInt(req.params.idGrupo);
+  const idUsuario = parseInt(req.params.idUsuario);
+
+  if (isNaN(idGrupo) || isNaN(idUsuario)) {
+    return res.status(400).json({ error: 'ID de grupo o usuario no válido' });
+  }
+
+  try {
+    const result = await db.query(
+      'DELETE FROM usuario_grupo WHERE id_grupo = $1 AND id_usuario = $2',
+      [idGrupo, idUsuario]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'El usuario no pertenece al grupo' });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error en /grupos/:idGrupo/miembros/:idUsuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
