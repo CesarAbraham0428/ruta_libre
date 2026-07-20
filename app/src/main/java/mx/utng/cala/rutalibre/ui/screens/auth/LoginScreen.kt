@@ -52,7 +52,8 @@ fun LoginScreen(
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
-            navController.navigate(Routes.HOME) {
+            val destino = if (uiState.pesoKg == null) Routes.PESO_INICIAL else Routes.HOME
+            navController.navigate(destino) {
                 popUpTo(Routes.LOGIN) { inclusive = true }
             }
         }

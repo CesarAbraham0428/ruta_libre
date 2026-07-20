@@ -5,6 +5,7 @@ require('dotenv').config();
 // Inicializar la aplicación Express
 const app = express();
 const PORT = process.env.PORT || 3000;
+const mqttService = require('./mqtt');
 
 // Middlewares
 app.use(cors());
@@ -34,7 +35,8 @@ app.get('/api/status', (req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
-    service: 'Ruta Libre REST API'
+    service: 'Ruta Libre REST API',
+    mqtt: mqttService.estaConectado() ? 'connected' : 'disconnected'
   });
 });
 
@@ -48,4 +50,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor de Ruta Libre escuchando en http://0.0.0.0:${PORT}`);
   console.log(`Endpoints disponibles bajo /api/`);
+  mqttService.iniciarMqtt();
 });

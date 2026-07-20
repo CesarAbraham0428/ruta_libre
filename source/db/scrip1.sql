@@ -17,6 +17,8 @@ CREATE TABLE usuario (
     nombre          VARCHAR(100) NOT NULL,
     nombre_usuario  VARCHAR(50)  NOT NULL UNIQUE,
     password        VARCHAR(255) NOT NULL,
+    peso_kg         NUMERIC(5,2) CONSTRAINT usuario_peso_valido
+                    CHECK (peso_kg IS NULL OR peso_kg BETWEEN 20 AND 300),
     fecha_registro  TIMESTAMP    NOT NULL DEFAULT now()
 );
 

@@ -1,16 +1,29 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+const useNeon = Boolean(process.env.DATABASE_URL);
+
+const pool = new Pool(
+  useNeon
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        max: 5,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 10_000,
+      }
+    : {
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+      },
+);
 
 pool.on('connect', () => {
-  console.log('Conectado a la base de datos PostgreSQL exitosamente.');
+  console.log(
+    `Conectado a PostgreSQL correctamente (${useNeon ? 'Neon' : 'local'}).`,
+  );
 });
 
 pool.on('error', (err) => {

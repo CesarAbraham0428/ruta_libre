@@ -1,6 +1,7 @@
 package mx.utng.cala.rutalibre.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -14,16 +15,22 @@ import mx.utng.cala.rutalibre.ui.screens.auth.RegisterScreen
 import mx.utng.cala.rutalibre.ui.screens.home.HomeScreen
 import mx.utng.cala.rutalibre.ui.screens.entrenamiento.EntrenamientoScreen
 import mx.utng.cala.rutalibre.ui.screens.resumen.ResumenScreen
+import mx.utng.cala.rutalibre.ui.screens.resumen.HistorialScreen
 import mx.utng.cala.rutalibre.ui.screens.metas.CrearMetaScreen
 import mx.utng.cala.rutalibre.ui.screens.metas.EditarMetaScreen
 import mx.utng.cala.rutalibre.ui.screens.metas.MetasScreen
 import mx.utng.cala.rutalibre.ui.screens.grupos.GruposScreen
 import mx.utng.cala.rutalibre.ui.screens.grupos.DetalleGrupoScreen
 import mx.utng.cala.rutalibre.ui.screens.perfil.PerfilScreen
+import mx.utng.cala.rutalibre.ui.screens.perfil.PesoInicialScreen
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MetasViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.GrupoViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.PerfilViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.EntrenamientoViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.PesoViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.HistorialViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.MqttViewModel
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -31,6 +38,26 @@ fun NavGraph(navController: NavHostController) {
     val metasViewModel: MetasViewModel = viewModel()
     val grupoViewModel: GrupoViewModel = viewModel()
     val perfilViewModel: PerfilViewModel = viewModel()
+    val entrenamientoViewModel: EntrenamientoViewModel = viewModel()
+    val pesoViewModel: PesoViewModel = viewModel()
+    val historialViewModel: HistorialViewModel = viewModel()
+    val mqttViewModel: MqttViewModel = viewModel()
+    val authState by authViewModel.uiState.collectAsState()
+    val mqttState by mqttViewModel.connectionState.collectAsState()
+
+    LaunchedEffect(authState.idUsuario) {
+        authState.idUsuario?.let(mqttViewModel::connect) ?: mqttViewModel.disconnect()
+    }
+
+    LaunchedEffect(Unit) {
+        mqttViewModel.events.collect { event ->
+            if (event.topic.endsWith("/entrenamientos/finalizado")) {
+                event.topic.split('/').getOrNull(2)?.toIntOrNull()?.let { idUsuario ->
+                    historialViewModel.cargar(idUsuario, forzar = true)
+                }
+            }
+        }
+    }
 
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
         composable(Routes.LOGIN) {
@@ -39,9 +66,42 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.REGISTER) {
             RegisterScreen(navController, authViewModel)
         }
-        composable(Routes.HOME) { HomeScreen(navController, authViewModel) }
-        composable(Routes.ENTRENAMIENTO) { EntrenamientoScreen(navController) }
-        composable(Routes.RESUMEN) { ResumenScreen(navController) }
+        composable(Routes.HOME) {
+            HomeScreen(navController, authViewModel, mqttState.status)
+        }
+        composable(Routes.PESO_INICIAL) {
+            PesoInicialScreen(navController, authViewModel, pesoViewModel)
+        }
+        composable(Routes.ENTRENAMIENTO) {
+            val authState by authViewModel.uiState.collectAsState()
+            val idUsuarioActual = authState.idUsuario ?: return@composable
+            EntrenamientoScreen(
+                navController,
+                idUsuarioActual,
+                authState.pesoKg ?: 70.0,
+                entrenamientoViewModel
+            )
+        }
+        composable(Routes.HISTORIAL) {
+            val authState by authViewModel.uiState.collectAsState()
+            val idUsuarioActual = authState.idUsuario ?: return@composable
+            HistorialScreen(navController, idUsuarioActual, historialViewModel)
+        }
+        composable(
+            route = Routes.RESUMEN,
+            arguments = listOf(navArgument("idEntrenamiento") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val authState by authViewModel.uiState.collectAsState()
+            val idUsuarioActual = authState.idUsuario ?: return@composable
+            val idEntrenamiento = backStackEntry.arguments?.getInt("idEntrenamiento")
+                ?: return@composable
+            ResumenScreen(
+                navController,
+                idUsuarioActual,
+                idEntrenamiento,
+                historialViewModel
+            )
+        }
         composable(Routes.METAS) { MetasScreen(navController, metasViewModel, authViewModel) }
         composable(Routes.CREAR_META) { CrearMetaScreen(navController, metasViewModel, authViewModel) }
         composable(
