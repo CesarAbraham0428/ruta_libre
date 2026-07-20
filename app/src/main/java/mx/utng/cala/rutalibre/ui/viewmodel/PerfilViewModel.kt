@@ -11,6 +11,7 @@ data class EstadoUiPerfil(
     val cargando: Boolean = false,
     val nombreUsuario: String = "",
     val nombre: String = "",
+    val pesoKg: Double? = null,
     val exito: Boolean = false,
     val error: String? = null
 )
@@ -29,7 +30,8 @@ class PerfilViewModel : ViewModel() {
                     _estado.value = _estado.value.copy(
                         cargando = false,
                         nombreUsuario = usuario.nombreUsuario,
-                        nombre = usuario.nombre
+                        nombre = usuario.nombre,
+                        pesoKg = usuario.pesoKg
                     )
                 },
                 onFailure = { error ->
@@ -42,14 +44,20 @@ class PerfilViewModel : ViewModel() {
         }
     }
 
-    fun actualizarUsuario(idUsuario: Int, nuevoNombre: String, nuevaContrasena: String?) {
+    fun actualizarUsuario(
+        idUsuario: Int,
+        nuevoNombre: String,
+        nuevaContrasena: String?,
+        nuevoPesoKg: Double
+    ) {
         viewModelScope.launch {
             _estado.value = _estado.value.copy(cargando = true, error = null, exito = false)
-            repositorio.actualizarUsuario(idUsuario, nuevoNombre, nuevaContrasena).fold(
+            repositorio.actualizarUsuario(idUsuario, nuevoNombre, nuevaContrasena, nuevoPesoKg).fold(
                 onSuccess = {
                     _estado.value = _estado.value.copy(
                         cargando = false,
                         nombre = nuevoNombre,
+                        pesoKg = nuevoPesoKg,
                         exito = true
                     )
                 },

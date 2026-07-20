@@ -5,5 +5,6 @@ data class Usuario(
     val nombre: String = "",
     val nombreUsuario: String = "",
     val password: String = "",
+    val pesoKg: Double? = null,
     val fechaRegistro: String = ""
 )

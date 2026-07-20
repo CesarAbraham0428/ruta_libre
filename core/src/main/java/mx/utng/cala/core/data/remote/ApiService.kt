@@ -22,6 +22,12 @@ interface ApiService {
         @Body peticion: ActualizarUsuarioPeticion
     ): Response<Unit>
 
+    @PUT("usuarios/{id}/peso")
+    suspend fun actualizarPeso(
+        @Path("id") idUsuario: Int,
+        @Body peticion: ActualizarPesoPeticion
+    ): Response<Unit>
+
     @POST("entrenamientos/iniciar")
     suspend fun iniciarEntrenamiento(@Body request: IniciarEntrenamientoRequest): Response<EntrenamientoResponse>
 

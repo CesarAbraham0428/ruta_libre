@@ -10,8 +10,24 @@ import androidx.navigation.compose.rememberNavController
 import androidx.wear.compose.material3.AppScaffold
 import mx.utng.cala.wearos.presentation.navigation.WearNavGraph
 import mx.utng.cala.wearos.presentation.theme.RutaLibreTheme
+import mx.utng.cala.core.data.mqtt.MqttConfig
+import mx.utng.cala.core.data.mqtt.MqttSubscriber
+import mx.utng.cala.wearos.BuildConfig
 
 class MainActivityWearOs : ComponentActivity() {
+    private val mqttSubscriber by lazy {
+        MqttSubscriber(
+            config = MqttConfig(
+                host = BuildConfig.MQTT_HOST,
+                port = BuildConfig.MQTT_PORT,
+                username = BuildConfig.MQTT_USERNAME,
+                password = BuildConfig.MQTT_PASSWORD,
+                clientPrefix = "ruta-libre-wear"
+            ),
+            logTag = "RutaLibreWearMQTT"
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -33,5 +49,15 @@ class MainActivityWearOs : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mqttSubscriber.connect(BuildConfig.MQTT_USER_ID)
+    }
+
+    override fun onStop() {
+        mqttSubscriber.disconnect()
+        super.onStop()
     }
 }

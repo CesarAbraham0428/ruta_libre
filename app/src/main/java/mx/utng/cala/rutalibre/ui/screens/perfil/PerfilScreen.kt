@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -48,6 +49,7 @@ fun PerfilScreen(
     val administradorEnfoque = LocalFocusManager.current
 
     var nombreEditable by remember { mutableStateOf("") }
+    var pesoEditable by remember { mutableStateOf("") }
     var contrasenaEditable by remember { mutableStateOf("") }
     var contrasenaVisible by remember { mutableStateOf(false) }
 
@@ -68,10 +70,17 @@ fun PerfilScreen(
         nombreEditable = estadoPerfil.nombre
     }
 
+    LaunchedEffect(estadoPerfil.pesoKg) {
+        pesoEditable = estadoPerfil.pesoKg?.let { peso ->
+            if (peso % 1.0 == 0.0) peso.toInt().toString() else peso.toString()
+        } ?: ""
+    }
+
     // Manejar éxito de la actualización
     LaunchedEffect(estadoPerfil.exito) {
         if (estadoPerfil.exito) {
             authViewModel.actualizarNombreLocal(nombreEditable)
+            estadoPerfil.pesoKg?.let(authViewModel::actualizarPesoLocal)
             perfilViewModel.restablecerExito()
             contrasenaEditable = "" // Limpiar el campo de contraseña tras guardar
         }
@@ -231,6 +240,39 @@ fun PerfilScreen(
 
                     Spacer(Modifier.height(16.dp))
 
+                    OutlinedTextField(
+                        value = pesoEditable,
+                        onValueChange = { nuevo ->
+                            if (nuevo.length <= 6 && nuevo.all { it.isDigit() || it == '.' || it == ',' }) {
+                                pesoEditable = nuevo
+                                perfilViewModel.limpiarError()
+                            }
+                        },
+                        label = { Text("Peso") },
+                        suffix = { Text("kg") },
+                        leadingIcon = {
+                            Icon(Icons.Default.MonitorWeight, contentDescription = null, tint = Primary)
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = Outline,
+                            focusedContainerColor = Surface,
+                            unfocusedContainerColor = Surface,
+                            focusedLabelColor = Primary,
+                            unfocusedLabelColor = OnSurfaceVariant,
+                            cursorColor = Primary,
+                            focusedTextColor = OnSurface,
+                            unfocusedTextColor = OnSurface
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
                     // Campo 3: Contraseña (Editable)
                     OutlinedTextField(
                         value = contrasenaEditable,
@@ -307,17 +349,24 @@ fun PerfilScreen(
                     Spacer(Modifier.height(32.dp))
 
                     // Botón: Guardar Cambios
-                    val datosCambiados = nombreEditable != estadoPerfil.nombre || contrasenaEditable.isNotEmpty()
-                    val botonHabilitado = datosCambiados && nombreEditable.isNotBlank() && contrasenaValida && !estadoPerfil.cargando
+                    val pesoKg = pesoEditable.replace(',', '.').toDoubleOrNull()
+                    val pesoValido = pesoKg != null && pesoKg in 20.0..300.0
+                    val datosCambiados = nombreEditable != estadoPerfil.nombre ||
+                        contrasenaEditable.isNotEmpty() || pesoKg != estadoPerfil.pesoKg
+                    val botonHabilitado = datosCambiados && nombreEditable.isNotBlank() &&
+                        contrasenaValida && pesoValido && !estadoPerfil.cargando
 
                     Button(
                         onClick = {
                             administradorEnfoque.clearFocus()
-                            estadoAutenticacion.idUsuario?.let { id ->
+                            val idUsuario = estadoAutenticacion.idUsuario
+                            val pesoAGuardar = pesoKg
+                            if (idUsuario != null && pesoAGuardar != null) {
                                 perfilViewModel.actualizarUsuario(
-                                    idUsuario = id,
+                                    idUsuario = idUsuario,
                                     nuevoNombre = nombreEditable,
-                                    nuevaContrasena = contrasenaEditable.ifEmpty { null }
+                                    nuevaContrasena = contrasenaEditable.ifEmpty { null },
+                                    nuevoPesoKg = pesoAGuardar
                                 )
                             }
                         },

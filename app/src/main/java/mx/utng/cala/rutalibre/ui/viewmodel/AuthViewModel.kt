@@ -12,6 +12,7 @@ data class AuthUiState(
     val isLoggedIn: Boolean = false,
     val idUsuario: Int? = null,
     val nombre: String? = null,
+    val pesoKg: Double? = null,
     val registrationSuccess: Boolean = false,
     val error: String? = null
 )
@@ -31,7 +32,8 @@ class AuthViewModel : ViewModel() {
                         isLoading = false, 
                         isLoggedIn = true,
                         idUsuario = it.idUsuario,
-                        nombre = it.nombre
+                        nombre = it.nombre,
+                        pesoKg = it.pesoKg
                     ) 
                 },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
@@ -59,6 +61,10 @@ class AuthViewModel : ViewModel() {
 
     fun actualizarNombreLocal(nuevoNombre: String) {
         _uiState.value = _uiState.value.copy(nombre = nuevoNombre)
+    }
+
+    fun actualizarPesoLocal(nuevoPesoKg: Double) {
+        _uiState.value = _uiState.value.copy(pesoKg = nuevoPesoKg)
     }
 
     fun cerrarSesion() {

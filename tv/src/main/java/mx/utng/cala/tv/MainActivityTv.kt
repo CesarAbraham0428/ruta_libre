@@ -11,8 +11,23 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import mx.utng.cala.tv.ui.navigation.TvNavGraph
 import mx.utng.cala.tv.ui.theme.RutaLibreTheme
+import mx.utng.cala.core.data.mqtt.MqttConfig
+import mx.utng.cala.core.data.mqtt.MqttSubscriber
 
 class MainActivityTv : ComponentActivity() {
+    private val mqttSubscriber by lazy {
+        MqttSubscriber(
+            config = MqttConfig(
+                host = BuildConfig.MQTT_HOST,
+                port = BuildConfig.MQTT_PORT,
+                username = BuildConfig.MQTT_USERNAME,
+                password = BuildConfig.MQTT_PASSWORD,
+                clientPrefix = "ruta-libre-tv"
+            ),
+            logTag = "RutaLibreTvMQTT"
+        )
+    }
+
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,5 +39,15 @@ class MainActivityTv : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        mqttSubscriber.connect(BuildConfig.MQTT_USER_ID)
+    }
+
+    override fun onStop() {
+        mqttSubscriber.disconnect()
+        super.onStop()
     }
 }

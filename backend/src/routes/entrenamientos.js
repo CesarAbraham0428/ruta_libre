@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { publicarEvento } = require('../mqtt');
 
 // Helper para mapear número de día ISO (1=Lunes, 7=Domingo) a abreviación en español
 const DAY_MAP = {
@@ -29,6 +30,14 @@ router.post('/iniciar', async (req, res) => {
     );
 
     const ent = result.rows[0];
+    publicarEvento(
+      `rutalibre/usuarios/${ent.id_usuario}/entrenamientos/iniciado`,
+      {
+        idEntrenamiento: ent.id_entrenamiento,
+        idUsuario: ent.id_usuario,
+        fechaInicio: ent.fecha_inicio.toISOString()
+      }
+    );
     res.status(201).json({
       idEntrenamiento: ent.id_entrenamiento,
       idUsuario: ent.id_usuario,
@@ -68,6 +77,7 @@ router.put('/finalizar', async (req, res) => {
 
   try {
     await db.query('BEGIN'); // Iniciar transacción
+    const metasCompletadas = [];
 
     // 1. Guardar la ruta si contiene coordenadas
     let idRuta = null;
@@ -153,11 +163,38 @@ router.put('/finalizar', async (req, res) => {
             'INSERT INTO notificacion (id_usuario, id_metas, mensaje, fecha_creacion, leida_movil, leida_smartwatch) VALUES ($1, $2, $3, NOW(), FALSE, FALSE)',
             [idUsuario, meta.id_metas, mensaje]
           );
+          metasCompletadas.push({
+            idMeta: meta.id_metas,
+            tipoMeta: meta.tipo_meta,
+            valorObjetivo: parseFloat(meta.valor_objetivo),
+            mensaje
+          });
         }
       }
     }
 
     await db.query('COMMIT'); // Confirmar transacción
+
+    publicarEvento(
+      `rutalibre/usuarios/${idUsuario}/entrenamientos/finalizado`,
+      {
+        idEntrenamiento: ent.id_entrenamiento,
+        idUsuario,
+        idRuta: ent.id_ruta,
+        pasos: ent.pasos,
+        calorias: ent.calorias,
+        distancia: parseFloat(ent.distancia),
+        tiempo: ent.tiempo,
+        fechaInicio: ent.fecha_inicio.toISOString()
+      }
+    );
+
+    for (const metaCompletada of metasCompletadas) {
+      publicarEvento(
+        `rutalibre/usuarios/${idUsuario}/metas/completada`,
+        { idUsuario, ...metaCompletada }
+      );
+    }
 
     res.json({
       idEntrenamiento: ent.id_entrenamiento,

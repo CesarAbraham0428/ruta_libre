@@ -45,7 +45,7 @@ router.post('/login', async (req, res) => {
 
   try {
     const result = await db.query(
-      'SELECT id_usuario, nombre, nombre_usuario, password FROM usuario WHERE nombre_usuario = $1',
+      'SELECT id_usuario, nombre, nombre_usuario, password, peso_kg FROM usuario WHERE nombre_usuario = $1',
       [nombreUsuario]
     );
 
@@ -66,6 +66,7 @@ router.post('/login', async (req, res) => {
       idUsuario: user.id_usuario,
       nombre: user.nombre,
       nombreUsuario: user.nombre_usuario,
+      pesoKg: user.peso_kg === null ? null : parseFloat(user.peso_kg),
       token: dummyToken
     });
   } catch (error) {

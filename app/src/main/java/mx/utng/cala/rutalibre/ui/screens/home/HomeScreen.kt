@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -29,9 +30,14 @@ import androidx.navigation.NavController
 import mx.utng.cala.rutalibre.ui.navigation.Routes
 import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
+import mx.utng.cala.rutalibre.data.mqtt.MqttConnectionStatus
 
 @Composable
-fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
+fun HomeScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel,
+    mqttStatus: MqttConnectionStatus
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -62,6 +68,25 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
             }
 
             Spacer(Modifier.height(32.dp))
+
+            val synchronizationText = when (mqttStatus) {
+                MqttConnectionStatus.CONNECTED -> "Sincronización en tiempo real activa"
+                MqttConnectionStatus.CONNECTING -> "Conectando sincronización..."
+                MqttConnectionStatus.ERROR -> "Sin conexión en tiempo real"
+                MqttConnectionStatus.DISCONNECTED -> "Sincronización desconectada"
+            }
+            val synchronizationColor = if (mqttStatus == MqttConnectionStatus.CONNECTED) {
+                Primary
+            } else {
+                OnSurfaceVariant
+            }
+            Text(
+                text = synchronizationText,
+                color = synchronizationColor,
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(Modifier.height(12.dp))
 
             // Tarjeta Destacada: Iniciar Entrenamiento
             Card(
@@ -134,6 +159,16 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
+            TarjetaHome(
+                titulo = "Historial de actividades",
+                descripcion = "Consulta tus entrenamientos guardados y revisa sus métricas.",
+                icono = Icons.Default.History,
+                colorAcento = Primary,
+                alHacerClick = { navController.navigate(Routes.HISTORIAL) }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             // Tarjeta 2: Metas
             TarjetaHome(
                 titulo = "Metas Personales",
@@ -159,7 +194,7 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
             // Tarjeta 4: Perfil
             TarjetaHome(
                 titulo = "Mi Perfil",
-                descripcion = "Visualiza tus estadísticas, edita tus datos y administra tu cuenta.",
+                descripcion = "Edita tus datos personales y administra tu cuenta.",
                 icono = Icons.Default.Person,
                 colorAcento = Primary,
                 alHacerClick = { navController.navigate(Routes.PERFIL) }
