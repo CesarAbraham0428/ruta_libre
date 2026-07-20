@@ -429,6 +429,49 @@ Los valores representan el **porcentaje de cambio** (positivo = mejora, negativo
 
 ---
 
+#### `GET /mes/:idUsuario`
+
+Dashboard mensual: totales acumulados del mes actual y desglose agrupado por semanas del mes.
+
+**Response `200`:**
+```json
+{
+  "distanciaTotal": 42.71,
+  "pasosTotales": 56842,
+  "caloriasTotales": 3215,
+  "tiempoTotal": 19938,
+  "rendimientoSemanal": [
+    { "semana": "Semana 1", "distancia": 10.5, "pasos": 12000, "calorias": 750, "tiempo": 4200 },
+    { "semana": "Semana 2", "distancia": 12.0, "pasos": 15000, "calorias": 900, "tiempo": 5000 },
+    { "semana": "Semana 3", "distancia": 20.21, "pasos": 29842, "calorias": 1565, "tiempo": 10738 },
+    { "semana": "Semana 4", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 },
+    { "semana": "Semana 5", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 }
+  ]
+}
+```
+
+Las semanas del mes se calculan dinámicamente según el calendario del mes actual (cada semana de lunes a domingo, o fracciones al inicio/fin del mes).
+
+---
+
+#### `GET /comparacion-mes/:idUsuario`
+
+Comparación de rendimiento entre el mes actual y el mes anterior.
+
+**Response `200`:**
+```json
+{
+  "distanciaMejora": 12.5,
+  "pasosMejora": 8.0,
+  "caloriasMejora": 10.0,
+  "tiempoMejora": 9.2
+}
+```
+
+Los valores representan el **porcentaje de cambio** respecto al mes anterior.
+
+---
+
 ### Rutas
 
 `base: /api/rutas`

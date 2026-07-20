@@ -110,6 +110,16 @@ async function runTests() {
     const weeklyData = await weeklyRes.json();
     console.log('11. /entrenamientos/semana/:id response:', weeklyData);
 
+    // 12. Consultar Dashboard Mensual
+    const monthlyRes = await fetch(`${baseUrl}/entrenamientos/mes/${userId}`);
+    const monthlyData = await monthlyRes.json();
+    console.log('12. /entrenamientos/mes/:id response:', monthlyData);
+
+    // 13. Consultar Comparación Mensual
+    const compMonthlyRes = await fetch(`${baseUrl}/entrenamientos/comparacion-mes/${userId}`);
+    const compMonthlyData = await compMonthlyRes.json();
+    console.log('13. /entrenamientos/comparacion-mes/:id response:', compMonthlyData);
+
   } catch (error) {
     console.error('Error durante la ejecución del test:', error);
   }

@@ -37,8 +37,14 @@ interface ApiService {
     @GET("entrenamientos/semana/{idUsuario}")
     suspend fun getDashboardSemanal(@Path("idUsuario") idUsuario: Int): Response<DashboardSemanalResponse>
 
+    @GET("entrenamientos/mes/{idUsuario}")
+    suspend fun obtenerDashboardMensual(@Path("idUsuario") idUsuario: Int): Response<RespuestaDashboardMensual>
+
     @GET("entrenamientos/comparacion/{idUsuario}")
     suspend fun getComparacionRendimiento(@Path("idUsuario") idUsuario: Int): Response<ComparacionRendimientoResponse>
+
+    @GET("entrenamientos/comparacion-mes/{idUsuario}")
+    suspend fun obtenerComparacionMensual(@Path("idUsuario") idUsuario: Int): Response<ComparacionRendimientoResponse>
 
     @POST("rutas/actualizar")
     suspend fun actualizarRuta(@Body request: ActualizarRutaRequest): Response<RutaResponse>

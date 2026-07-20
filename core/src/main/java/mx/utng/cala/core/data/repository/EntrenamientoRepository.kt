@@ -74,11 +74,31 @@ class EntrenamientoRepository {
         }
     }
 
+    suspend fun obtenerDashboardMensual(idUsuario: Int): Result<RespuestaDashboardMensual> {
+        return try {
+            val response = api.obtenerDashboardMensual(idUsuario)
+            if (response.isSuccessful) Result.success(response.body()!!)
+            else Result.failure(Exception("Error al obtener dashboard mensual"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getComparacion(idUsuario: Int): Result<ComparacionRendimientoResponse> {
         return try {
             val response = api.getComparacionRendimiento(idUsuario)
             if (response.isSuccessful) Result.success(response.body()!!)
             else Result.failure(Exception("Error al obtener comparación"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun obtenerComparacionMensual(idUsuario: Int): Result<ComparacionRendimientoResponse> {
+        return try {
+            val response = api.obtenerComparacionMensual(idUsuario)
+            if (response.isSuccessful) Result.success(response.body()!!)
+            else Result.failure(Exception("Error al obtener comparación mensual"))
         } catch (e: Exception) {
             Result.failure(e)
         }
