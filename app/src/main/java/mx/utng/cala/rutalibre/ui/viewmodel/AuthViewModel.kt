@@ -56,4 +56,12 @@ class AuthViewModel : ViewModel() {
     fun resetRegistrationState() {
         _uiState.value = _uiState.value.copy(registrationSuccess = false)
     }
+
+    fun actualizarNombreLocal(nuevoNombre: String) {
+        _uiState.value = _uiState.value.copy(nombre = nuevoNombre)
+    }
+
+    fun cerrarSesion() {
+        _uiState.value = AuthUiState()
+    }
 }

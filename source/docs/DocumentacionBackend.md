@@ -559,9 +559,12 @@ Crea un nuevo grupo con un código único de 6 caracteres (letras mayúsculas + 
 ```json
 {
   "nombre": "Corredores Matutinos",
-  "descripcion": "Grupo para correr en las mañanas"
+  "descripcion": "Grupo para correr en las mañanas",
+  "idUsuario": 1
 }
 ```
+
+Cuando se envía `idUsuario`, el usuario se registra automáticamente en `usuario_grupo` dentro de la misma transacción que crea el grupo.
 
 **Response `201`:**
 ```json
@@ -635,6 +638,12 @@ Miembros del grupo ordenados por distancia semanal descendente.
   ]
 }
 ```
+
+#### `DELETE /:idGrupo/miembros/:idUsuario`
+
+Elimina la relación del usuario con el grupo. Se utiliza para que un usuario salga de un grupo.
+
+**Response:** `204` (sin cuerpo)
 
 ---
 

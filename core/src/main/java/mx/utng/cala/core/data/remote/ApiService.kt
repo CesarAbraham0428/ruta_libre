@@ -16,6 +16,12 @@ interface ApiService {
     @GET("usuarios/{id}")
     suspend fun getUsuario(@Path("id") idUsuario: Int): Response<UsuarioResponse>
 
+    @PUT("usuarios/{id}")
+    suspend fun actualizarUsuario(
+        @Path("id") idUsuario: Int,
+        @Body peticion: ActualizarUsuarioPeticion
+    ): Response<Unit>
+
     @POST("entrenamientos/iniciar")
     suspend fun iniciarEntrenamiento(@Body request: IniciarEntrenamientoRequest): Response<EntrenamientoResponse>
 
@@ -66,6 +72,12 @@ interface ApiService {
 
     @GET("grupos/{idGrupo}/ranking")
     suspend fun getRankingGrupo(@Path("idGrupo") idGrupo: Int): Response<RankingResponse>
+
+    @DELETE("grupos/{idGrupo}/miembros/{idUsuario}")
+    suspend fun salirDeGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Path("idUsuario") idUsuario: Int
+    ): Response<Unit>
 
     @GET("notificaciones/usuario/{idUsuario}")
     suspend fun getNotificaciones(@Path("idUsuario") idUsuario: Int): Response<List<NotificacionResponse>>
