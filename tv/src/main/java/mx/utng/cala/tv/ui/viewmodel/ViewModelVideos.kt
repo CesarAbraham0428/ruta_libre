@@ -48,7 +48,7 @@ class ViewModelVideos : ViewModel() {
                 _estadoUi.update { it.copy(estaCargando = false, listaVideos = videos) }
             } catch (error: CancellationException) {
                 throw error
-            } catch (error: Exception) {
+            } catch (error: Throwable) {
                 _estadoUi.update {
                     it.copy(
                         estaCargando = false,

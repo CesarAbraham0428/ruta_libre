@@ -81,7 +81,7 @@ fun VideosScreen(
     }
 
     // Control de navegación interna al cambiar el estado del ViewModel
-    LaunchedEffect(estadoUi.videoSeleccionado) {
+    LaunchedEffect(estadoUi.videoSeleccionado, estadoUi.filtroActivo) {
         vistaActual = if (estadoUi.videoSeleccionado != null) {
             VistaVideosTv.DETALLE
         } else if (estadoUi.filtroActivo != "Videos") {
