@@ -425,4 +425,176 @@ router.get('/comparacion/:idUsuario', async (req, res) => {
   }
 });
 
+// GET /api/entrenamientos/mes/:idUsuario (Dashboard mensual)
+router.get('/mes/:idUsuario', async (req, res) => {
+  const idUsuario = parseInt(req.params.idUsuario);
+  if (isNaN(idUsuario)) {
+    return res.status(400).json({ error: 'ID de usuario no válido' });
+  }
+
+  try {
+    // 1. Obtener totales acumulados del mes actual
+    const consultaTotales = await db.query(
+      `SELECT COALESCE(SUM(distancia), 0) AS dist_tot,
+              COALESCE(SUM(pasos), 0) AS pasos_tot,
+              COALESCE(SUM(calorias), 0) AS cal_tot,
+              COALESCE(SUM(tiempo), 0) AS tiempo_tot
+       FROM entrenamiento
+       WHERE id_usuario = $1 AND fecha_inicio >= date_trunc('month', current_date)`,
+      [idUsuario]
+    );
+
+    const totales = consultaTotales.rows[0];
+
+    // 2. Obtener todos los entrenamientos del mes actual
+    const consultaEntrenamientos = await db.query(
+      `SELECT distancia, pasos, calorias, tiempo, fecha_inicio
+       FROM entrenamiento
+       WHERE id_usuario = $1 AND fecha_inicio >= date_trunc('month', current_date)
+       ORDER BY fecha_inicio ASC`,
+      [idUsuario]
+    );
+
+    // Calcular las semanas del mes actual
+    const obtenerSemanasDelMes = () => {
+      const ahora = new Date();
+      const anio = ahora.getFullYear();
+      const mes = ahora.getMonth(); // 0-indexado
+      const primerDia = new Date(anio, mes, 1);
+      const ultimoDia = new Date(anio, mes + 1, 0);
+
+      const semanasLocal = [];
+      let fechaActual = new Date(primerDia);
+      let indiceSemana = 1;
+
+      while (fechaActual <= ultimoDia) {
+        const inicioSemana = new Date(fechaActual);
+        const diaSemana = fechaActual.getDay();
+        // Encontrar cuántos días faltan para el domingo (7 - diaSemana, si diaSemana es 0 es domingo, entonces 0 días)
+        const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana;
+        let finSemana = new Date(fechaActual);
+        finSemana.setDate(fechaActual.getDate() + diasHastaDomingo);
+
+        if (finSemana > ultimoDia) {
+          finSemana = new Date(ultimoDia);
+        }
+
+        // Establecer hora de fin al final del día
+        const finSemanaConHora = new Date(finSemana.getFullYear(), finSemana.getMonth(), finSemana.getDate(), 23, 59, 59, 999);
+
+        semanasLocal.push({
+          nombre: `Semana ${indiceSemana}`,
+          inicio: inicioSemana,
+          fin: finSemanaConHora
+        });
+
+        // El siguiente inicio de semana es el día después
+        fechaActual = new Date(finSemana);
+        fechaActual.setDate(fechaActual.getDate() + 1);
+        indiceSemana++;
+      }
+
+      return semanasLocal;
+    };
+
+    const listadoSemanas = obtenerSemanasDelMes();
+    const rendimientoSemanal = listadoSemanas.map(sem => ({
+      semana: sem.nombre,
+      distancia: 0.0,
+      pasos: 0,
+      calorias: 0,
+      tiempo: 0
+    }));
+
+    // Agrupar entrenamientos en las semanas
+    for (const ent of consultaEntrenamientos.rows) {
+      const fechaEnt = new Date(ent.fecha_inicio);
+      for (let i = 0; i < listadoSemanas.length; i++) {
+        const sem = listadoSemanas[i];
+        if (fechaEnt >= sem.inicio && fechaEnt <= sem.fin) {
+          rendimientoSemanal[i].distancia += parseFloat(ent.distancia);
+          rendimientoSemanal[i].pasos += parseInt(ent.pasos);
+          rendimientoSemanal[i].calorias += parseInt(ent.calorias);
+          rendimientoSemanal[i].tiempo += parseInt(ent.tiempo);
+          break;
+        }
+      }
+    }
+
+    // Redondear distancias a 2 decimales
+    for (const r of rendimientoSemanal) {
+      r.distancia = parseFloat(r.distancia.toFixed(2));
+    }
+
+    res.json({
+      distanciaTotal: parseFloat(totales.dist_tot),
+      pasosTotales: parseInt(totales.pasos_tot),
+      caloriasTotales: parseInt(totales.cal_tot),
+      tiempoTotal: parseInt(totales.tiempo_tot),
+      rendimientoSemanal
+    });
+
+  } catch (error) {
+    console.error('Error en /entrenamientos/mes/:idUsuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/entrenamientos/comparacion-mes/:idUsuario (Comparación de rendimiento mensual)
+router.get('/comparacion-mes/:idUsuario', async (req, res) => {
+  const idUsuario = parseInt(req.params.idUsuario);
+  if (isNaN(idUsuario)) {
+    return res.status(400).json({ error: 'ID de usuario no válido' });
+  }
+
+  try {
+    // 1. Mes actual
+    const mesActualResultado = await db.query(
+      `SELECT COALESCE(SUM(distancia), 0) AS dist,
+              COALESCE(SUM(pasos), 0) AS pasos,
+              COALESCE(SUM(calorias), 0) AS cal,
+              COALESCE(SUM(tiempo), 0) AS tiempo
+       FROM entrenamiento
+       WHERE id_usuario = $1 AND fecha_inicio >= date_trunc('month', current_date)`,
+      [idUsuario]
+    );
+    const actual = mesActualResultado.rows[0];
+
+    // 2. Mes anterior
+    const mesAnteriorResultado = await db.query(
+      `SELECT COALESCE(SUM(distancia), 0) AS dist,
+              COALESCE(SUM(pasos), 0) AS pasos,
+              COALESCE(SUM(calorias), 0) AS cal,
+              COALESCE(SUM(tiempo), 0) AS tiempo
+       FROM entrenamiento
+       WHERE id_usuario = $1 
+         AND fecha_inicio >= date_trunc('month', current_date - interval '1 month')
+         AND fecha_inicio < date_trunc('month', current_date)`,
+      [idUsuario]
+    );
+    const anterior = mesAnteriorResultado.rows[0];
+
+    // Función auxiliar para calcular porcentaje de mejora
+    const calcularMejora = (act, ant) => {
+      const valorActual = parseFloat(act);
+      const valorAnterior = parseFloat(ant);
+      if (valorAnterior === 0) {
+        return valorActual > 0 ? 100.0 : 0.0;
+      }
+      return parseFloat((((valorActual - valorAnterior) / valorAnterior) * 100).toFixed(2));
+    };
+
+    res.json({
+      distanciaMejora: calcularMejora(actual.dist, anterior.dist),
+      pasosMejora: calcularMejora(actual.pasos, anterior.pasos),
+      caloriasMejora: calcularMejora(actual.cal, anterior.cal),
+      tiempoMejora: calcularMejora(actual.tiempo, anterior.tiempo)
+    });
+
+  } catch (error) {
+    console.error('Error en /entrenamientos/comparacion-mes/:idUsuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;

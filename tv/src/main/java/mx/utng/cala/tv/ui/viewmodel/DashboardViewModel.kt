@@ -7,37 +7,76 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.dto.response.ComparacionRendimientoResponse
 import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
+import mx.utng.cala.core.data.dto.response.RespuestaDashboardMensual
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
 
-data class DashboardUiState(
-    val isLoading: Boolean = false,
+enum class PeriodoDashboard {
+    SEMANAL,
+    MENSUAL
+}
+
+data class EstadoUiDashboard(
+    val estaCargando: Boolean = false,
     val semanal: DashboardSemanalResponse? = null,
-    val comparacion: ComparacionRendimientoResponse? = null,
+    val comparacionSemanal: ComparacionRendimientoResponse? = null,
+    val mensual: RespuestaDashboardMensual? = null,
+    val comparacionMensual: ComparacionRendimientoResponse? = null,
+    val periodoSeleccionado: PeriodoDashboard = PeriodoDashboard.SEMANAL,
     val error: String? = null
 )
 
 class DashboardViewModel : ViewModel() {
 
-    private val repository = EntrenamientoRepository()
-    private val _uiState = MutableStateFlow(DashboardUiState())
-    val uiState: StateFlow<DashboardUiState> = _uiState
+    private val repositorio = EntrenamientoRepository()
+    private val _estadoUi = MutableStateFlow(EstadoUiDashboard())
+    val estadoUi: StateFlow<EstadoUiDashboard> = _estadoUi
 
-    fun cargarDashboard(idUsuario: Int) {
+    fun cargarDashboardSemanal(idUsuario: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            repository.getDashboardSemanal(idUsuario).fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, semanal = it) },
-                onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
+            _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
+            repositorio.getDashboardSemanal(idUsuario).fold(
+                onSuccess = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, semanal = it) },
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, error = it.message) }
             )
         }
     }
 
-    fun cargarComparacion(idUsuario: Int) {
+    fun cargarComparacionSemanal(idUsuario: Int) {
         viewModelScope.launch {
-            repository.getComparacion(idUsuario).fold(
-                onSuccess = { _uiState.value = _uiState.value.copy(comparacion = it) },
-                onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            repositorio.getComparacion(idUsuario).fold(
+                onSuccess = { _estadoUi.value = _estadoUi.value.copy(comparacionSemanal = it) },
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(error = it.message) }
             )
+        }
+    }
+
+    fun cargarDashboardMensual(idUsuario: Int) {
+        viewModelScope.launch {
+            _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
+            repositorio.obtenerDashboardMensual(idUsuario).fold(
+                onSuccess = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, mensual = it) },
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, error = it.message) }
+            )
+        }
+    }
+
+    fun cargarComparacionMensual(idUsuario: Int) {
+        viewModelScope.launch {
+            repositorio.obtenerComparacionMensual(idUsuario).fold(
+                onSuccess = { _estadoUi.value = _estadoUi.value.copy(comparacionMensual = it) },
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(error = it.message) }
+            )
+        }
+    }
+
+    fun cambiarPeriodo(nuevoPeriodo: PeriodoDashboard, idUsuario: Int) {
+        _estadoUi.value = _estadoUi.value.copy(periodoSeleccionado = nuevoPeriodo)
+        if (nuevoPeriodo == PeriodoDashboard.SEMANAL) {
+            cargarDashboardSemanal(idUsuario)
+            cargarComparacionSemanal(idUsuario)
+        } else {
+            cargarDashboardMensual(idUsuario)
+            cargarComparacionMensual(idUsuario)
         }
     }
 }

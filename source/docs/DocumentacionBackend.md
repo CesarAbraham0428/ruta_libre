@@ -429,6 +429,49 @@ Los valores representan el **porcentaje de cambio** (positivo = mejora, negativo
 
 ---
 
+#### `GET /mes/:idUsuario`
+
+Dashboard mensual: totales acumulados del mes actual y desglose agrupado por semanas del mes.
+
+**Response `200`:**
+```json
+{
+  "distanciaTotal": 42.71,
+  "pasosTotales": 56842,
+  "caloriasTotales": 3215,
+  "tiempoTotal": 19938,
+  "rendimientoSemanal": [
+    { "semana": "Semana 1", "distancia": 10.5, "pasos": 12000, "calorias": 750, "tiempo": 4200 },
+    { "semana": "Semana 2", "distancia": 12.0, "pasos": 15000, "calorias": 900, "tiempo": 5000 },
+    { "semana": "Semana 3", "distancia": 20.21, "pasos": 29842, "calorias": 1565, "tiempo": 10738 },
+    { "semana": "Semana 4", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 },
+    { "semana": "Semana 5", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 }
+  ]
+}
+```
+
+Las semanas del mes se calculan dinámicamente según el calendario del mes actual (cada semana de lunes a domingo, o fracciones al inicio/fin del mes).
+
+---
+
+#### `GET /comparacion-mes/:idUsuario`
+
+Comparación de rendimiento entre el mes actual y el mes anterior.
+
+**Response `200`:**
+```json
+{
+  "distanciaMejora": 12.5,
+  "pasosMejora": 8.0,
+  "caloriasMejora": 10.0,
+  "tiempoMejora": 9.2
+}
+```
+
+Los valores representan el **porcentaje de cambio** respecto al mes anterior.
+
+---
+
 ### Rutas
 
 `base: /api/rutas`
@@ -801,3 +844,15 @@ app.use((err, req, res, next) => {
 - Las contraseñas se almacenan hasheadas con **bcryptjs** (salt rounds = 10).
 - El "token" devuelto en login es un string con formato `token_simulado_{idUsuario}_{timestamp}`.
 - **No existe middleware de verificación de tokens** — ninguna ruta valida el token en requests subsecuentes.
+
+---
+
+## Consideraciones sobre Contenido Multimedia y APIs de Terceros
+
+### Módulo de Contenido de TV (Visualización de Videos de Running)
+
+El módulo de Smart TV cuenta con una sección de **Contenido** para la visualización de videos recomendados sobre running. Cabe destacar que:
+1. **Consumo Descentralizado:** Este módulo no consume endpoints del backend de Ruta Libre para obtener los metadatos o reproducir los videos.
+2. **Conexión Directa:** El cliente de Smart TV consume de manera directa la **API v3 de YouTube** utilizando peticiones HTTP remotas mediante Retrofit (`https://www.googleapis.com/youtube/v3/search`).
+3. **Resiliencia local:** Si la API de YouTube falla por red, excede su cuota, o no hay una clave API configurada, el cliente de Smart TV cuenta con resiliencia local inmediata. Implementa timeouts explícitos de 5 segundos y realiza un fallback automático a una lista estática simulada de videos (`obtenerVideosSimulados`), capturando excepciones a nivel global de la corrutina (`Throwable`) para evitar cargas infinitas. Por lo tanto, el servidor de Node.js no procesa, almacena, ni intermedia la entrega de este contenido, optimizando la capacidad del backend.
+
