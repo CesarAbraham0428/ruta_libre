@@ -98,10 +98,12 @@ fun VideosScreen(
     ) {
         // Barra Lateral de Navegación Fija a la izquierda (Oculta en modo reproductor para inmersión opcional,
         // pero visible en mockups. Mostrémosla tal como en los mockups).
-        BarraLateralTv(
-            navController = navController,
-            rutaSeleccionada = TvRoutes.VIDEOS
-        )
+        if (vistaActual != VistaVideosTv.DETALLE) {
+            BarraLateralTv(
+                navController = navController,
+                rutaSeleccionada = TvRoutes.VIDEOS
+            )
+        }
 
         // Contenido Dinámico a la derecha
         Box(
