@@ -844,3 +844,15 @@ app.use((err, req, res, next) => {
 - Las contraseñas se almacenan hasheadas con **bcryptjs** (salt rounds = 10).
 - El "token" devuelto en login es un string con formato `token_simulado_{idUsuario}_{timestamp}`.
 - **No existe middleware de verificación de tokens** — ninguna ruta valida el token en requests subsecuentes.
+
+---
+
+## Consideraciones sobre Contenido Multimedia y APIs de Terceros
+
+### Módulo de Contenido de TV (Visualización de Videos de Running)
+
+El módulo de Smart TV cuenta con una sección de **Contenido** para la visualización de videos recomendados sobre running. Cabe destacar que:
+1. **Consumo Descentralizado:** Este módulo no consume endpoints del backend de Ruta Libre para obtener los metadatos o reproducir los videos.
+2. **Conexión Directa:** El cliente de Smart TV consume de manera directa la **API v3 de YouTube** utilizando peticiones HTTP remotas mediante Retrofit (`https://www.googleapis.com/youtube/v3/search`).
+3. **Resiliencia local:** Si la API de YouTube falla, excede su cuota o no hay una clave API configurada, la Smart TV cuenta con datos mock locales. Por lo tanto, el servidor de Node.js no procesa, almacena, ni intermedia la entrega de este contenido, optimizando la capacidad del backend.
+
