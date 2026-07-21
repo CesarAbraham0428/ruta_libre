@@ -13,6 +13,8 @@ object Routes {
     const val EDITAR_META = "editar_meta/{idMeta}"
     const val GRUPOS = "grupos"
     const val PERFIL = "perfil"
+    const val VINCULAR_DISPOSITIVO = "vincular_dispositivo"
+    const val DISPOSITIVOS = "dispositivos"
     const val DETALLE_GRUPO = "detalle_grupo/{idGrupo}/{nombreGrupo}"
 
     fun entrenamiento(id: Int) = "entrenamiento/$id"

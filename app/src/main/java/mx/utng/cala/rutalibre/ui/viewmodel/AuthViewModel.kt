@@ -13,6 +13,7 @@ data class AuthUiState(
     val idUsuario: Int? = null,
     val nombre: String? = null,
     val pesoKg: Double? = null,
+    val token: String? = null,
     val registrationSuccess: Boolean = false,
     val error: String? = null
 )
@@ -33,7 +34,8 @@ class AuthViewModel : ViewModel() {
                         isLoggedIn = true,
                         idUsuario = it.idUsuario,
                         nombre = it.nombre,
-                        pesoKg = it.pesoKg
+                        pesoKg = it.pesoKg,
+                        token = it.token
                     ) 
                 },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }

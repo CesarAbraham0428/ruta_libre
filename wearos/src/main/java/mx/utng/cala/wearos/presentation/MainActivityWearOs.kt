@@ -13,8 +13,23 @@ import mx.utng.cala.wearos.presentation.theme.RutaLibreTheme
 import mx.utng.cala.core.data.mqtt.MqttConfig
 import mx.utng.cala.core.data.mqtt.MqttSubscriber
 import mx.utng.cala.wearos.BuildConfig
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.google.android.gms.wearable.DataClient
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.Wearable
+import mx.utng.cala.wearos.data.WearIdentityStore
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import mx.utng.cala.core.data.repository.DispositivoRepository
 
-class MainActivityWearOs : ComponentActivity() {
+class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener {
+    private lateinit var identityStore: WearIdentityStore
+    private var linkedUserId by mutableStateOf<Int?>(null)
+    private val dispositivoRepository = DispositivoRepository()
     private val mqttSubscriber by lazy {
         MqttSubscriber(
             config = MqttConfig(
@@ -30,6 +45,17 @@ class MainActivityWearOs : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        identityStore = WearIdentityStore(this)
+        linkedUserId = identityStore.idUsuario
+        lifecycleScope.launch {
+            mqttSubscriber.events.collect { event ->
+                val cerrarTodas = event.topic.endsWith("/sesion/cerrada")
+                val cerrarEsta = identityStore.idDispositivo?.let {
+                    event.topic.endsWith("/dispositivos/$it/desvinculado")
+                } == true
+                if (cerrarTodas || cerrarEsta) limpiarSesionLocal()
+            }
+        }
         
         val permissions = arrayOf(
             Manifest.permission.BODY_SENSORS,
@@ -45,7 +71,11 @@ class MainActivityWearOs : ComponentActivity() {
             RutaLibreTheme {
                 AppScaffold {
                     val navController = rememberNavController()
-                    WearNavGraph(navController = navController)
+                    WearNavGraph(
+                        navController = navController,
+                        idUsuario = linkedUserId,
+                        onCerrarSesion = ::cerrarSesionWear
+                    )
                 }
             }
         }
@@ -53,11 +83,54 @@ class MainActivityWearOs : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        mqttSubscriber.connect(BuildConfig.MQTT_USER_ID)
+        val dataClient = Wearable.getDataClient(this)
+        dataClient.addListener(this)
+        dataClient.dataItems.addOnSuccessListener { items ->
+            items.forEach { item -> readIdentity(item.uri.path, DataMapItem.fromDataItem(item)) }
+            items.release()
+        }
+        linkedUserId?.let(mqttSubscriber::connect)
+        identityStore.token?.let { token ->
+            lifecycleScope.launch {
+                if (dispositivoRepository.validarSesionDispositivo(token).isFailure) limpiarSesionLocal()
+            }
+        }
     }
 
     override fun onStop() {
+        Wearable.getDataClient(this).removeListener(this)
         mqttSubscriber.disconnect()
         super.onStop()
+    }
+
+    override fun onDataChanged(events: DataEventBuffer) {
+        events.filter { it.type == DataEvent.TYPE_CHANGED }.forEach { event ->
+            readIdentity(event.dataItem.uri.path, DataMapItem.fromDataItem(event.dataItem))
+        }
+    }
+
+    private fun readIdentity(path: String?, item: DataMapItem) {
+        if (path != "/ruta-libre/identity") return
+        val idUsuario = item.dataMap.getInt("idUsuario", -1)
+        val idDispositivo = item.dataMap.getString("idDispositivo")
+        val token = item.dataMap.getString("token")
+        if (idUsuario > 0 && !idDispositivo.isNullOrBlank() && !token.isNullOrBlank()) {
+            identityStore.save(idUsuario, idDispositivo, token)
+            linkedUserId = idUsuario
+            mqttSubscriber.connect(idUsuario)
+        }
+    }
+
+    private fun cerrarSesionWear() {
+        lifecycleScope.launch {
+            identityStore.token?.let { dispositivoRepository.cerrarSesionDispositivo(it) }
+            limpiarSesionLocal()
+        }
+    }
+
+    private fun limpiarSesionLocal() {
+        identityStore.clear()
+        linkedUserId = null
+        mqttSubscriber.disconnect()
     }
 }

@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.maptiler.sdk.kotlin)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.wearable)
     implementation(libs.hivemq.mqtt.client)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -1,6 +1,7 @@
 package mx.utng.cala.rutalibre.ui.screens.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import mx.utng.cala.rutalibre.R
 import mx.utng.cala.rutalibre.ui.navigation.Routes
 import mx.utng.cala.rutalibre.ui.theme.Background
 import mx.utng.cala.rutalibre.ui.theme.OnBackground
@@ -75,9 +78,10 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "\uD83C\uDFC3",
-                    fontSize = 20.sp
+                Image(
+                    painter = painterResource(R.mipmap.ruta_libre_foreground),
+                    contentDescription = "Logo de Ruta Libre",
+                    modifier = Modifier.size(28.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(

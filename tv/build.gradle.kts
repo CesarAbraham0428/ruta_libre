@@ -36,7 +36,6 @@ android {
         buildConfigField("int", "MQTT_PORT", localProperties.getProperty("MQTT_PORT", "8883"))
         buildConfigField("String", "MQTT_USERNAME", localProperties.getProperty("MQTT_USERNAME", "").asBuildConfigString())
         buildConfigField("String", "MQTT_PASSWORD", localProperties.getProperty("MQTT_PASSWORD", "").asBuildConfigString())
-        buildConfigField("int", "MQTT_USER_ID", localProperties.getProperty("MQTT_USER_ID", "1"))
         buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
     }
 

@@ -20,6 +20,7 @@ const rutaRoutes = require('./routes/rutas');
 const metaRoutes = require('./routes/metas');
 const grupoRoutes = require('./routes/grupos');
 const notificacionRoutes = require('./routes/notificaciones');
+const dispositivoRoutes = require('./routes/dispositivos');
 
 // Registrar rutas
 app.use('/api/auth', authRoutes);
@@ -29,6 +30,7 @@ app.use('/api/rutas', rutaRoutes);
 app.use('/api/metas', metaRoutes);
 app.use('/api/grupos', grupoRoutes);
 app.use('/api/notificaciones', notificacionRoutes);
+app.use('/api/dispositivos', dispositivoRoutes);
 
 // Ruta de estado de la API
 app.get('/api/status', (req, res) => {

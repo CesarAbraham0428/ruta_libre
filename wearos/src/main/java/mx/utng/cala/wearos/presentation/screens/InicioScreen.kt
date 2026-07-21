@@ -32,7 +32,8 @@ import mx.utng.cala.wearos.presentation.theme.*
 @Composable
 fun InicioScreen(
     navController: NavController,
-    onIniciar: () -> Unit = {}
+    onIniciar: () -> Unit = {},
+    onCerrarSesion: () -> Unit = {}
 ) {
     val listState = rememberScalingLazyListState()
 
@@ -138,6 +139,17 @@ fun InicioScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(6.dp))
+                Button(
+                    onClick = onCerrarSesion,
+                    modifier = Modifier.fillMaxWidth().height(38.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5C2025))
+                ) {
+                    Text("DESVINCULAR", color = Color.White, fontSize = 10.sp)
                 }
             }
         }

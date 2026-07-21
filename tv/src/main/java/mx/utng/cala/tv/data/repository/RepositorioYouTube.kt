@@ -17,6 +17,20 @@ class ErrorApiYouTube(message: String) : Exception(message)
 
 class RepositorioYouTube {
 
+    private val terminosAtleticos = listOf(
+        "atletismo", "correr", "corredor", "corredora", "corredores", "carrera",
+        "running", "runner", "jogging", "maraton", "maratón", "5k", "10k",
+        "tecnica de carrera", "técnica de carrera", "zancada", "entrenamiento para correr",
+        "running workout", "running training"
+    )
+
+    private val terminosExcluidos = listOf(
+        "official song", "official music video", "music video", "lyric", "lyrics",
+        "karaoke", "soundtrack", "remix", "cancion", "canción", "musica", "música",
+        "sonic", "digital circus", "animation", "animacion", "animación", "cartoon",
+        "gameplay", "gaming", "minecraft", "roblox", "fortnite"
+    )
+
     private val servicioApi: ServicioApiYouTube by lazy {
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
@@ -127,12 +141,26 @@ class RepositorioYouTube {
         }
 
         try {
-            val termino = listOf("running", consulta.trim())
+            val terminoBase = when (categoria.lowercase(Locale.ROOT)) {
+                "consejos" -> "consejos para correr técnica de carrera running"
+                "carreras" -> "entrenamiento 5K 10K maratón atletismo"
+                "tips" -> "ejercicios calentamiento estiramientos para corredores"
+                else -> "entrenamiento para correr técnica de carrera atletismo"
+            }
+            val termino = listOf(terminoBase, consulta.trim())
                 .filter { it.isNotBlank() }
                 .joinToString(" ")
             val respuestaBusqueda = servicioApi.buscarVideos(consulta = termino, clave = claveApi)
             validarRespuesta(respuestaBusqueda, "buscar videos")
             val elementos = respuestaBusqueda.body()?.elementos.orEmpty()
+                .filter { elemento ->
+                    esContenidoAtletico(
+                        titulo = elemento.info.titulo,
+                        descripcion = elemento.info.descripcion,
+                        canal = elemento.info.canal
+                    )
+                }
+                .take(12)
             val ids = elementos.mapNotNull { it.identificador.idVideo }
             if (ids.isEmpty()) return emptyList()
 
@@ -166,6 +194,13 @@ class RepositorioYouTube {
             android.util.Log.e("RepositorioYouTube", "Error al consultar la API de YouTube: ${error.message}. Usando videos simulados de fallback.", error)
             return obtenerVideosSimulados(consulta, categoria)
         }
+    }
+
+    private fun esContenidoAtletico(titulo: String, descripcion: String, canal: String): Boolean {
+        val contenido = "$titulo $descripcion $canal".lowercase(Locale.ROOT)
+        val estaExcluido = terminosExcluidos.any(contenido::contains)
+        val esAtletico = terminosAtleticos.any(contenido::contains)
+        return esAtletico && !estaExcluido
     }
 
     private fun validarRespuesta(respuesta: Response<*>, accion: String) {

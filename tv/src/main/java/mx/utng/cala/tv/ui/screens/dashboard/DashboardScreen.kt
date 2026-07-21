@@ -45,15 +45,16 @@ data class PuntoDatosGrafico(
 @Composable
 fun DashboardScreen(
     navController: NavController,
+    idUsuario: Int,
+    onCerrarSesion: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
 ) {
     val estadoUi by viewModel.estadoUi.collectAsState()
-    val idUsuarioMock = 1 // ID de usuario por defecto para TV
 
     // Cargar datos al iniciar
     LaunchedEffect(Unit) {
-        viewModel.cargarDashboardSemanal(idUsuarioMock)
-        viewModel.cargarComparacionSemanal(idUsuarioMock)
+        viewModel.cargarDashboardSemanal(idUsuario)
+        viewModel.cargarComparacionSemanal(idUsuario)
     }
 
     Row(
@@ -64,7 +65,8 @@ fun DashboardScreen(
         // Barra Lateral de Navegación
         BarraLateralTv(
             navController = navController,
-            rutaSeleccionada = TvRoutes.DASHBOARD
+            rutaSeleccionada = TvRoutes.DASHBOARD,
+            onCerrarSesion = onCerrarSesion
         )
 
         // Contenido Principal del Dashboard
@@ -78,7 +80,7 @@ fun DashboardScreen(
             FilaCabecera(
                 periodo = estadoUi.periodoSeleccionado,
                 alCambiarPeriodo = { nuevoPeriodo ->
-                    viewModel.cambiarPeriodo(nuevoPeriodo, idUsuarioMock)
+                    viewModel.cambiarPeriodo(nuevoPeriodo, idUsuario)
                 }
             )
 

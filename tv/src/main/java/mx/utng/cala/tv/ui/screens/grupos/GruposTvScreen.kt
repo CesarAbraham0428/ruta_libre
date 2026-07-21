@@ -41,9 +41,10 @@ enum class VistaGruposTv {
 @Composable
 fun GruposTvScreen(
     navController: NavController,
+    idUsuario: Int,
+    onCerrarSesion: () -> Unit,
     grupoViewModel: GrupoTvViewModel = viewModel()
 ) {
-    val idUsuarioMock = 1 // ID de usuario consistente con Dashboard
     val estadoUi by grupoViewModel.estadoUi.collectAsState()
 
     var vistaActual by remember { mutableStateOf(VistaGruposTv.PRINCIPAL) }
@@ -53,7 +54,7 @@ fun GruposTvScreen(
     var grupoSeleccionadoDescripcion by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        grupoViewModel.cargarGruposDeUsuario(idUsuarioMock)
+        grupoViewModel.cargarGruposDeUsuario(idUsuario)
     }
 
     Row(
@@ -64,7 +65,8 @@ fun GruposTvScreen(
         // Barra Lateral de Navegación
         BarraLateralTv(
             navController = navController,
-            rutaSeleccionada = TvRoutes.GRUPOS
+            rutaSeleccionada = TvRoutes.GRUPOS,
+            onCerrarSesion = onCerrarSesion
         )
 
         // Contenido Principal Dinámico
@@ -94,7 +96,7 @@ fun GruposTvScreen(
                     PantallaCrearGrupoTv(
                         estaCargando = estadoUi.estaCargando,
                         alGuardar = { nombre, descripcion ->
-                            grupoViewModel.crearNuevoGrupo(nombre, descripcion, idUsuarioMock)
+                            grupoViewModel.crearNuevoGrupo(nombre, descripcion, idUsuario)
                             vistaActual = VistaGruposTv.PRINCIPAL
                         },
                         alVolver = {
@@ -106,7 +108,7 @@ fun GruposTvScreen(
                     PantallaUnirseGrupoTv(
                         estaCargando = estadoUi.estaCargando,
                         alUnirse = { codigo ->
-                            grupoViewModel.unirseAGrupoConCodigo(idUsuarioMock, codigo)
+                            grupoViewModel.unirseAGrupoConCodigo(idUsuario, codigo)
                             vistaActual = VistaGruposTv.PRINCIPAL
                         },
                         alVolver = {
@@ -116,14 +118,14 @@ fun GruposTvScreen(
                 }
                 VistaGruposTv.DETALLE -> {
                     PantallaDetalleGrupoTv(
-                        idUsuarioActual = idUsuarioMock,
+                        idUsuarioActual = idUsuario,
                         nombreGrupo = grupoSeleccionadoNombre,
                         codigoGrupo = grupoSeleccionadoCodigo,
                         descripcionGrupo = grupoSeleccionadoDescripcion,
                         estadoUi = estadoUi,
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->
-                                grupoViewModel.salirDeGrupo(idUsuarioMock, idGrupo) {
+                                grupoViewModel.salirDeGrupo(idUsuario, idGrupo) {
                                     vistaActual = VistaGruposTv.PRINCIPAL
                                 }
                             }

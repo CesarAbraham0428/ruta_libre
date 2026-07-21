@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -198,6 +200,26 @@ fun HomeScreen(
                 icono = Icons.Default.Person,
                 colorAcento = Primary,
                 alHacerClick = { navController.navigate(Routes.PERFIL) }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            TarjetaHome(
+                titulo = "Vincular TV",
+                descripcion = "Conecta una pantalla de TV con tu cuenta mediante un código temporal.",
+                icono = Icons.Default.Link,
+                colorAcento = Secondary,
+                alHacerClick = { navController.navigate(Routes.VINCULAR_DISPOSITIVO) }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            TarjetaHome(
+                titulo = "Dispositivos vinculados",
+                descripcion = "Consulta y administra las sesiones de tu TV y reloj.",
+                icono = Icons.Default.Devices,
+                colorAcento = Primary,
+                alHacerClick = { navController.navigate(Routes.DISPOSITIVOS) }
             )
             
             Spacer(Modifier.height(32.dp))

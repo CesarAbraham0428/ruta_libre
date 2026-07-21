@@ -99,4 +99,52 @@ interface ApiService {
 
     @PUT("notificaciones/{id}/leer-wear")
     suspend fun marcarLeidaSmartwatch(@Path("id") idNotificacion: Int): Response<Unit>
+
+    @POST("dispositivos/solicitar-vinculacion")
+    suspend fun solicitarVinculacion(
+        @Body request: SolicitarVinculacionRequest
+    ): Response<SolicitudVinculacionResponse>
+
+    @POST("dispositivos/estado-vinculacion")
+    suspend fun consultarEstadoVinculacion(
+        @Body request: EstadoVinculacionRequest
+    ): Response<EstadoVinculacionResponse>
+
+    @POST("dispositivos/vincular")
+    suspend fun vincularDispositivo(
+        @Header("Authorization") authorization: String,
+        @Body request: VincularDispositivoRequest
+    ): Response<DispositivoVinculadoResponse>
+
+    @POST("dispositivos/vincular-wear")
+    suspend fun vincularWear(
+        @Header("Authorization") authorization: String,
+        @Body request: VincularWearRequest
+    ): Response<WearVinculadoResponse>
+
+    @GET("dispositivos")
+    suspend fun listarDispositivos(
+        @Header("Authorization") authorization: String
+    ): Response<List<DispositivoResponse>>
+
+    @DELETE("dispositivos/{idDispositivo}")
+    suspend fun desvincularDispositivo(
+        @Header("Authorization") authorization: String,
+        @Path("idDispositivo") idDispositivo: String
+    ): Response<Unit>
+
+    @DELETE("dispositivos/sesion/actual")
+    suspend fun cerrarSesionDispositivo(
+        @Header("Authorization") authorization: String
+    ): Response<Unit>
+
+    @GET("dispositivos/sesion/actual")
+    suspend fun validarSesionDispositivo(
+        @Header("Authorization") authorization: String
+    ): Response<Unit>
+
+    @DELETE("dispositivos/sesion/todos")
+    suspend fun cerrarTodasLasSesiones(
+        @Header("Authorization") authorization: String
+    ): Response<Unit>
 }
