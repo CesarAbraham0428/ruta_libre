@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +22,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -38,7 +40,8 @@ import mx.utng.cala.tv.ui.theme.SurfaceVariant
 @Composable
 fun BarraLateralTv(
     navController: NavController,
-    rutaSeleccionada: String
+    rutaSeleccionada: String,
+    onCerrarSesion: () -> Unit = {}
 ) {
     // Detectar si la barra lateral tiene foco en alguno de sus elementos
     var tieneFocoMenu by remember { mutableStateOf(false) }
@@ -49,17 +52,26 @@ fun BarraLateralTv(
         label = "anchoBarraLateralAnimado"
     )
 
-    Column(
+    // Reserva siempre el ancho compacto. Al recibir foco, el menú se dibuja por
+    // encima del contenido y ya no comprime las tarjetas del dashboard.
+    Box(
         modifier = Modifier
             .fillMaxHeight()
-            .width(anchoBarra)
-            .background(ColorSuperficie)
-            .onFocusChanged { estadoFoco ->
-                tieneFocoMenu = estadoFoco.hasFocus
-            }
-            .padding(top = 32.dp, start = 12.dp, end = 12.dp, bottom = 32.dp),
-        horizontalAlignment = Alignment.Start
+            .width(72.dp)
+            .zIndex(10f)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .wrapContentWidth(Alignment.Start, unbounded = true)
+                .width(anchoBarra)
+                .background(ColorSuperficie)
+                .onFocusChanged { estadoFoco ->
+                    tieneFocoMenu = estadoFoco.hasFocus
+                }
+                .padding(top = 32.dp, start = 12.dp, end = 12.dp, bottom = 32.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
         // Logo de Ruta Libre colapsable
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -148,6 +160,17 @@ fun BarraLateralTv(
                 }
             }
         )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        ElementoMenuLateral(
+            texto = "Cerrar sesión",
+            icono = Icons.Default.Logout,
+            seleccionado = false,
+            barraExpandida = tieneFocoMenu,
+            alSeleccionar = onCerrarSesion
+        )
+        }
     }
 }
 

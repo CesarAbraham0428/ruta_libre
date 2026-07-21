@@ -13,7 +13,14 @@ interface ServicioApiYouTube {
         @Query("part") parte: String = "snippet",
         @Query("q") consulta: String,
         @Query("type") tipo: String = "video",
-        @Query("maxResults") maxResultados: Int = 10,
+        @Query("maxResults") maxResultados: Int = 25,
+        @Query("order") orden: String = "relevance",
+        @Query("safeSearch") busquedaSegura: String = "strict",
+        @Query("relevanceLanguage") idioma: String = "es",
+        @Query("regionCode") region: String = "MX",
+        @Query("videoCategoryId") categoriaVideo: String = "17",
+        @Query("videoEmbeddable") reproducibleInsertado: String = "true",
+        @Query("videoSyndicated") reproducibleFueraDeYouTube: String = "true",
         @Query("key") clave: String
     ): Response<RespuestaBusquedaYouTube>
 

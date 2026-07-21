@@ -2,8 +2,11 @@ package mx.utng.cala.tv.ui.screens.videos
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.view.View
+import android.content.Intent
 import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
+import android.webkit.CookieManager
+import android.webkit.PermissionRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
@@ -39,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -63,6 +67,7 @@ enum class VistaVideosTv {
 @Composable
 fun VideosScreen(
     navController: NavController,
+    onCerrarSesion: () -> Unit,
     viewModel: ViewModelVideos = viewModel()
 ) {
     val estadoUi by viewModel.estadoUi.collectAsState()
@@ -99,9 +104,10 @@ fun VideosScreen(
         // Barra Lateral de Navegación Fija a la izquierda (Oculta en modo reproductor para inmersión opcional,
         // pero visible en mockups. Mostrémosla tal como en los mockups).
         if (vistaActual != VistaVideosTv.DETALLE) {
-            BarraLateralTv(
-                navController = navController,
-                rutaSeleccionada = TvRoutes.VIDEOS
+        BarraLateralTv(
+            navController = navController,
+            rutaSeleccionada = TvRoutes.VIDEOS,
+            onCerrarSesion = onCerrarSesion
             )
         }
 
@@ -126,7 +132,7 @@ fun VideosScreen(
                             viewModel.cambiarFiltro(filtro)
                         },
                         alSeleccionarVideo = { video ->
-                            viewModel.seleccionarVideo(video)
+                            abrirReproductorIntegrado(contexto, video)
                         }
                     )
                 }
@@ -149,7 +155,7 @@ fun VideosScreen(
                             preferencias.edit().putStringSet("marcados", listaMarcados).apply()
                         },
                         alSeleccionarVideo = { video ->
-                            viewModel.seleccionarVideo(video)
+                            abrirReproductorIntegrado(contexto, video)
                         }
                     )
                 }
@@ -517,6 +523,7 @@ fun PantallaDetalleReproductorVideo(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -548,73 +555,151 @@ fun ReproductorYouTube(
     idVideo: String,
     modifier: Modifier = Modifier
 ) {
-    AndroidView(
-        factory = { contexto ->
-            WebView(contexto).apply {
-                webViewClient = WebViewClient()
-                webChromeClient = WebChromeClient()
-                isFocusable = true
-                isFocusableInTouchMode = true
-                settings.apply {
-                    javaScriptEnabled = true
-                    mediaPlaybackRequiresUserGesture = false
-                    domStorageEnabled = true
-                    useWideViewPort = true
-                    loadWithOverviewMode = true
-                }
-                
-                val codigoHtml = """
-                    <!DOCTYPE html>
-                    <html>
-                    <body style="margin:0;padding:0;background-color:black;">
-                        <div id="player" style="width:100%;height:100vh;"></div>
-                        <script>
-                            var tag = document.createElement('script');
-                            tag.src = "https://www.youtube.com/iframe_api";
-                            var firstScriptTag = document.getElementsByTagName('script')[0];
-                            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    var mensajeEstado by remember(idVideo) { mutableStateOf("Cargando video...") }
+    var hayError by remember(idVideo) { mutableStateOf(false) }
 
-                            var player;
-                            function onYouTubeIframeAPIReady() {
-                                player = new YT.Player('player', {
-                                    height: '100%',
-                                    width: '100%',
-                                    videoId: '$idVideo',
-                                    playerVars: {
-                                        'playsinline': 1,
-                                        'autoplay': 1,
-                                        'controls': 1,
-                                        'rel': 0,
-                                        'showinfo': 0,
-                                        'iv_load_policy': 3,
-                                        'modestbranding': 1,
-                                        'enablejsapi': 1,
-                                        'origin': 'https://www.youtube.com'
-                                    },
-                                    events: {
-                                        'onReady': onPlayerReady
-                                    }
-                                });
+    Box(modifier = modifier.background(Color.Black)) {
+        AndroidView(
+            factory = { contexto ->
+                WebView(contexto).also { webView ->
+                    webView.webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            if (url?.contains("youtube.com/embed/") == true) {
+                                mensajeEstado = ""
+                                hayError = false
                             }
-                            function onPlayerReady(event) {
-                                event.target.playVideo();
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?,
+                            error: android.webkit.WebResourceError?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            if (request?.isForMainFrame == true) {
+                                mensajeEstado = "No se pudo conectar con YouTube: ${error?.description ?: "error de red"}."
+                                hayError = true
                             }
-                        </script>
-                    </body>
-                    </html>
-                """.trimIndent()
-                
-                loadDataWithBaseURL("https://www.youtube.com", codigoHtml, "text/html", "utf-8", null)
-                requestFocus()
+                        }
+
+                        override fun onReceivedHttpError(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?,
+                            errorResponse: android.webkit.WebResourceResponse?
+                        ) {
+                            super.onReceivedHttpError(view, request, errorResponse)
+                            if (request?.isForMainFrame == true) {
+                                mensajeEstado = "YouTube rechazó el reproductor (HTTP ${errorResponse?.statusCode})."
+                                hayError = true
+                            }
+                        }
+                    }
+                    webView.webChromeClient = object : WebChromeClient() {
+                        override fun onPermissionRequest(request: PermissionRequest) {
+                            val permitidos = request.resources.filter {
+                                it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
+                            }
+                            webView.post {
+                                if (permitidos.isNotEmpty()) request.grant(permitidos.toTypedArray())
+                                else request.deny()
+                            }
+                        }
+
+                        override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                            val mensaje = consoleMessage.message()
+                            when {
+                                mensaje == "RUTALIBRE_PLAYER_READY" -> webView.post {
+                                    mensajeEstado = ""
+                                    hayError = false
+                                }
+                                mensaje.startsWith("RUTALIBRE_PLAYER_ERROR:") -> webView.post {
+                                    val codigo = mensaje.substringAfter(':')
+                                    mensajeEstado = mensajeErrorYouTube(codigo)
+                                    hayError = true
+                                }
+                                mensaje == "RUTALIBRE_AUTOPLAY_BLOCKED" -> webView.post {
+                                    mensajeEstado = "Selecciona el reproductor y presiona Play"
+                                    hayError = false
+                                }
+                            }
+                            return super.onConsoleMessage(consoleMessage)
+                        }
+                    }
+                    webView.isFocusable = true
+                    webView.isFocusableInTouchMode = true
+                    webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    webView.setBackgroundColor(android.graphics.Color.BLACK)
+                    webView.settings.apply {
+                        javaScriptEnabled = true
+                        mediaPlaybackRequiresUserGesture = false
+                        domStorageEnabled = true
+                        databaseEnabled = true
+                        useWideViewPort = true
+                        loadWithOverviewMode = true
+                        allowFileAccess = false
+                        allowContentAccess = false
+                    }
+                    CookieManager.getInstance().apply {
+                        setAcceptCookie(true)
+                        setAcceptThirdPartyCookies(webView, true)
+                    }
+
+                    val urlReproductor = buildString {
+                        append("https://www.youtube.com/embed/")
+                        append(idVideo)
+                        append("?autoplay=1&playsinline=1&controls=1&rel=0")
+                        append("&enablejsapi=1&origin=https%3A%2F%2Frutalibre.local")
+                    }
+                    webView.loadUrl(
+                        urlReproductor,
+                        mapOf("Referer" to "https://rutalibre.local/")
+                    )
+                    webView.postDelayed({
+                        if (mensajeEstado == "Cargando video...") {
+                            mensajeEstado = "YouTube no respondió. Verifica Android System WebView y la conexión de la TV."
+                            hayError = true
+                        }
+                    }, 15_000)
+                    webView.requestFocus()
+                }
+            },
+            modifier = Modifier.fillMaxSize().focusable(),
+            onRelease = { webView ->
+                webView.stopLoading()
+                webView.loadUrl("about:blank")
+                webView.destroy()
             }
-        },
-        modifier = modifier.focusable(),
-        onRelease = { webView ->
-            webView.stopLoading()
-            webView.loadUrl("about:blank")
-            webView.destroy()
+        )
+
+        if (mensajeEstado.isNotBlank()) {
+            Text(
+                text = mensajeEstado,
+                color = if (hayError) Color(0xFFFF6B6B) else Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+private fun abrirReproductorIntegrado(contexto: Context, video: VideoRutaLibre) {
+    contexto.startActivity(
+        Intent(contexto, ReproductorVideoActivity::class.java).apply {
+            putExtra(ReproductorVideoActivity.EXTRA_ID_VIDEO, video.id)
+            putExtra(ReproductorVideoActivity.EXTRA_TITULO_VIDEO, video.titulo)
         }
     )
+}
+
+private fun mensajeErrorYouTube(codigo: String): String = when (codigo) {
+    "2" -> "YouTube rechazó el identificador del video (error 2)."
+    "5" -> "Este video no puede reproducirse en el reproductor HTML5 (error 5)."
+    "100" -> "El video fue eliminado, es privado o no está disponible (error 100)."
+    "101", "150" -> "El propietario no permite reproducir este video dentro de otras aplicaciones (error $codigo)."
+    "153" -> "YouTube no pudo identificar correctamente el reproductor integrado (error 153)."
+    else -> "No se pudo reproducir el video. Error de YouTube: $codigo."
 }
 
 /**

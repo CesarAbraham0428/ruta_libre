@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
+const { signToken } = require('../authToken');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -59,15 +60,18 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'El usuario o la contraseña es incorrecto' });
     }
 
-    // Generar un token simulado para cumplir con la interfaz
-    const dummyToken = `token_simulado_${user.id_usuario}_${Date.now()}`;
+    const token = signToken({
+      tipoToken: 'usuario',
+      idUsuario: user.id_usuario,
+      nombreUsuario: user.nombre_usuario
+    });
 
     res.json({
       idUsuario: user.id_usuario,
       nombre: user.nombre,
       nombreUsuario: user.nombre_usuario,
       pesoKg: user.peso_kg === null ? null : parseFloat(user.peso_kg),
-      token: dummyToken
+      token
     });
   } catch (error) {
     console.error('Error en /auth/login:', error);

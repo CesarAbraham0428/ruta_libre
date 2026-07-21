@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "mx.utng.cala.wearos"
+        applicationId = "mx.utng.cala.rutalibre"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
@@ -31,7 +31,6 @@ android {
         buildConfigField("int", "MQTT_PORT", mqttProperties.getProperty("MQTT_PORT", "8883"))
         buildConfigField("String", "MQTT_USERNAME", mqttProperties.getProperty("MQTT_USERNAME", "").asBuildConfigString())
         buildConfigField("String", "MQTT_PASSWORD", mqttProperties.getProperty("MQTT_PASSWORD", "").asBuildConfigString())
-        buildConfigField("int", "MQTT_USER_ID", mqttProperties.getProperty("MQTT_USER_ID", "1"))
     }
 
     buildTypes {

@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -23,6 +25,8 @@ import mx.utng.cala.rutalibre.ui.screens.grupos.GruposScreen
 import mx.utng.cala.rutalibre.ui.screens.grupos.DetalleGrupoScreen
 import mx.utng.cala.rutalibre.ui.screens.perfil.PerfilScreen
 import mx.utng.cala.rutalibre.ui.screens.perfil.PesoInicialScreen
+import mx.utng.cala.rutalibre.ui.screens.perfil.VincularDispositivoScreen
+import mx.utng.cala.rutalibre.ui.screens.perfil.DispositivosScreen
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MetasViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.GrupoViewModel
@@ -31,6 +35,11 @@ import mx.utng.cala.rutalibre.ui.viewmodel.EntrenamientoViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.PesoViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.HistorialViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MqttViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.VincularDispositivoViewModel
+import mx.utng.cala.rutalibre.ui.viewmodel.DispositivosViewModel
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import mx.utng.cala.core.data.repository.DispositivoRepository
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -44,9 +53,24 @@ fun NavGraph(navController: NavHostController) {
     val mqttViewModel: MqttViewModel = viewModel()
     val authState by authViewModel.uiState.collectAsState()
     val mqttState by mqttViewModel.connectionState.collectAsState()
+    val context = LocalContext.current
+    val dispositivoRepository = remember { DispositivoRepository() }
 
     LaunchedEffect(authState.idUsuario) {
         authState.idUsuario?.let(mqttViewModel::connect) ?: mqttViewModel.disconnect()
+    }
+
+    LaunchedEffect(authState.token) {
+        val token = authState.token ?: return@LaunchedEffect
+        dispositivoRepository.vincularWear(token).onSuccess { wearIdentity ->
+            val request = PutDataMapRequest.create("/ruta-libre/identity").apply {
+                dataMap.putInt("idUsuario", wearIdentity.idUsuario)
+                dataMap.putString("idDispositivo", wearIdentity.idDispositivo)
+                dataMap.putString("token", wearIdentity.token)
+                dataMap.putLong("actualizadoEn", System.currentTimeMillis())
+            }.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(context).putDataItem(request)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -128,5 +152,14 @@ fun NavGraph(navController: NavHostController) {
             DetalleGrupoScreen(navController, grupoViewModel, idGrupo, nombreGrupo, idUsuarioActual)
         }
         composable(Routes.PERFIL) { PerfilScreen(navController, perfilViewModel, authViewModel) }
+        composable(Routes.VINCULAR_DISPOSITIVO) {
+            val token = authState.token ?: return@composable
+            val vincularDispositivoViewModel: VincularDispositivoViewModel = viewModel()
+            VincularDispositivoScreen(navController, token, vincularDispositivoViewModel)
+        }
+        composable(Routes.DISPOSITIVOS) {
+            val dispositivosViewModel: DispositivosViewModel = viewModel()
+            DispositivosScreen(navController, authViewModel, dispositivosViewModel)
+        }
     }
 }
