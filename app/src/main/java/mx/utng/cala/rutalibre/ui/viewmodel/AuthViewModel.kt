@@ -1,11 +1,14 @@
 package mx.utng.cala.rutalibre.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.repository.AuthRepository
+import mx.utng.cala.rutalibre.data.auth.AuthSession
+import mx.utng.cala.rutalibre.data.auth.AuthSessionStore
 
 data class AuthUiState(
     val isLoading: Boolean = false,
@@ -18,25 +21,38 @@ data class AuthUiState(
     val error: String? = null
 )
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AuthRepository()
-    private val _uiState = MutableStateFlow(AuthUiState())
+    private val sessionStore = AuthSessionStore(application)
+    private val _uiState = MutableStateFlow(
+        sessionStore.restore()?.let {
+            AuthUiState(
+                isLoggedIn = true,
+                idUsuario = it.idUsuario,
+                nombre = it.nombre,
+                pesoKg = it.pesoKg,
+                token = it.token
+            )
+        } ?: AuthUiState()
+    )
     val uiState: StateFlow<AuthUiState> = _uiState
 
     fun login(usuario: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             repository.login(usuario, password).fold(
-                onSuccess = { 
-                    _uiState.value = _uiState.value.copy(
+                onSuccess = {
+                    val loggedInState = AuthUiState(
                         isLoading = false, 
                         isLoggedIn = true,
                         idUsuario = it.idUsuario,
                         nombre = it.nombre,
                         pesoKg = it.pesoKg,
                         token = it.token
-                    ) 
+                    )
+                    _uiState.value = loggedInState
+                    persistSession(loggedInState)
                 },
                 onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message) }
             )
@@ -63,13 +79,23 @@ class AuthViewModel : ViewModel() {
 
     fun actualizarNombreLocal(nuevoNombre: String) {
         _uiState.value = _uiState.value.copy(nombre = nuevoNombre)
+        persistSession(_uiState.value)
     }
 
     fun actualizarPesoLocal(nuevoPesoKg: Double) {
         _uiState.value = _uiState.value.copy(pesoKg = nuevoPesoKg)
+        persistSession(_uiState.value)
     }
 
     fun cerrarSesion() {
+        sessionStore.clear()
         _uiState.value = AuthUiState()
+    }
+
+    private fun persistSession(state: AuthUiState) {
+        val idUsuario = state.idUsuario ?: return
+        val nombre = state.nombre ?: return
+        val token = state.token ?: return
+        sessionStore.save(AuthSession(idUsuario, nombre, state.pesoKg, token))
     }
 }
