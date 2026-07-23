@@ -815,7 +815,7 @@ Obtiene todas las metas registradas del usuario.
 
 #### `POST /`
 
-Crea un grupo con un código único de 6 caracteres. Si el creador envía `idUsuario`, es registrado de inmediato en `usuario_grupo`.
+Crea un grupo con un código único de 6 caracteres. Si el creador envía `idUsuario`, este se registra en la columna `id_creador` de la tabla `grupo` (propietario) y se le inscribe de inmediato en `usuario_grupo`.
 
 **Request Body:**
 ```json
@@ -832,7 +832,8 @@ Crea un grupo con un código único de 6 caracteres. Si el creador envía `idUsu
   "idGrupo": 3,
   "nombre": "Corredores Matutinos",
   "codigo": "A7X3K9",
-  "descripcion": "Grupo de entrenamiento matutino"
+  "descripcion": "Grupo de entrenamiento matutino",
+  "idCreador": 1
 }
 ```
 
@@ -860,7 +861,20 @@ Permite a un usuario salir de un grupo. Respuesta `204 No Content`.
 
 #### `GET /usuario/:idUsuario`
 
-Obtiene la lista de grupos a los que está unido el usuario.
+Obtiene la lista de grupos a los que está unido el usuario. Cada grupo incluye su identificador, nombre, código, descripción y el `idCreador` (identificador del creador/dueño).
+
+**Respuesta `200 OK`:**
+```json
+[
+  {
+    "idGrupo": 3,
+    "nombre": "Corredores Matutinos",
+    "codigo": "A7X3K9",
+    "descripcion": "Grupo de entrenamiento matutino",
+    "idCreador": 1
+  }
+]
+```
 
 ---
 
@@ -873,6 +887,21 @@ Obtiene la lista de integrantes del grupo con sus métricas acumuladas durante l
 #### `GET /:idGrupo/ranking`
 
 Obtiene la tabla de clasificación del grupo ordenada descendentemente por distancia acumulada en la semana.
+
+---
+
+#### `DELETE /:idGrupo`
+
+Elimina un grupo completo de la plataforma. Este endpoint valida que el usuario que realiza la petición sea el creador/dueño del grupo (`id_creador`). Si se confirma la eliminación, los registros de membresías en `usuario_grupo` son eliminados automáticamente en cascada.
+
+**Parámetros de Consulta (Query Params) o Cuerpo (Request Body):**
+- `idUsuario` (Integer, Obligatorio): ID del usuario que solicita la eliminación (debe ser el creador).
+
+**Respuestas:**
+- `204 No Content`: Grupo eliminado con éxito.
+- `400 Bad Request`: ID de grupo o usuario inválido.
+- `403 Forbidden`: El usuario no es el creador del grupo.
+- `404 Not Found`: Grupo no encontrado.
 
 ---
 

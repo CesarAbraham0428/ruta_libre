@@ -91,6 +91,12 @@ interface ApiService {
         @Path("idUsuario") idUsuario: Int
     ): Response<Unit>
 
+    @DELETE("grupos/{idGrupo}")
+    suspend fun eliminarGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Query("idUsuario") idUsuario: Int
+    ): Response<Unit>
+
     @GET("notificaciones/usuario/{idUsuario}")
     suspend fun getNotificaciones(@Path("idUsuario") idUsuario: Int): Response<List<NotificacionResponse>>
 

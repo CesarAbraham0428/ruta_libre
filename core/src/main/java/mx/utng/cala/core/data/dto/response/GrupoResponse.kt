@@ -4,7 +4,8 @@ data class GrupoResponse(
     val idGrupo: Int,
     val nombre: String,
     val codigo: String,
-    val descripcion: String?
+    val descripcion: String?,
+    val idCreador: Int? = null
 )
 
 data class MiembroGrupoResponse(

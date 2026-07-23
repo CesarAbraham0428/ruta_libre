@@ -90,4 +90,14 @@ class GrupoRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun eliminarGrupo(idGrupo: Int, idUsuario: Int): Result<Unit> {
+        return try {
+            val response = api.eliminarGrupo(idGrupo, idUsuario)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception(errorMessage(response, "Error al eliminar el grupo")))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -121,23 +121,34 @@ tv/src/main/java/mx/utng/cala/tv/
 
 ### Panel de Control y Estadísticas (DashboardScreen)
 - **Alternancia de Periodos (Semanal / Mensual):** El usuario puede conmutar entre vista semanal y mensual en tiempo real. `DashboardViewModel` actualiza el estado y realiza peticiones paralelas al repositorio.
-- **Tarjetas Acumuladoras:** Muestra distancia total (km), pasos totales, calorías (kcal) y tiempo (min/hrs), incluyendo indicadores de porcentaje de cambio en color verde (mejora) o rojo (disminución) respecto al periodo equivalente anterior.
-- **Tarjeta Comparativa y Tendencia:** Presenta barras de avance proporcional e indicadores visuales de tendencia motivacional de entrenamiento.
+- **Soporte Dinámico de 4 Estados de Rendimiento:** La pantalla del Dashboard y todas sus tarjetas evalúan si el usuario tiene registros de entrenamiento en el periodo actual. En función de esto y la comparación con el periodo previo, se definen los siguientes estados:
+  1. **Estado Inicial (Sin Datos):** Detectado automáticamente si el usuario es recién registrado y no tiene entrenamientos en el periodo actual. En las tarjetas acumuladoras se ocultan las flechas e incrementos y se muestra *"Sin datos anteriores"*. La tarjeta de comparación y la gráfica muestran una UI estilizada de estado vacío (Empty State) con mensajes informativos y motivadores para registrar actividad.
+  2. **Estado de Mejora:** Cuando el promedio del rendimiento mejora respecto al periodo anterior, se muestran indicadores visuales llamativos en color verde (`Primary`) acompañados de flechas hacia arriba (`↑`).
+  3. **Estado de Disminución (Empeora):** Cuando el promedio del rendimiento desciende respecto al periodo anterior, se muestran indicadores visuales en color rojo (`Error`) y flechas hacia abajo (`↓`).
+  4. **Estado Neutral (Estable / Sin Cambios):** Cuando el rendimiento del usuario es idéntico o no presenta variaciones significativas (`0.0%`), se muestran indicadores en color amarillo/ámbar (`Neutral`) con flechas horizontales (`→`).
+- **Tarjetas Acumuladoras:** Muestra distancia total (km), pasos totales, calorías (kcal) y tiempo (min/hrs) aplicando el formato de color e icono de tendencia correspondiente.
+- **Tarjeta Comparativa y Tendencia:** Presenta barras de avance proporcional e indicadores visuales de tendencia general utilizando la enumeración `EstadoTendencia` para renderizar el icono de tendencia (`TrendingUp`, `TrendingDown`, `TrendingFlat`, `DirectionsRun`), el título y la descripción motivacional adecuada.
 
 ---
 
 ### Gráfica de Rendimiento Multi-métrica Nativa (Canvas)
 - Renderizada de forma nativa con Jetpack Compose `Canvas` para optimizar el rendimiento en procesadores de Smart TV.
-- **Barras Multi-métrica Simultáneas:** Renderiza por cada periodo tres barras contiguas (distancia en verde, pasos en azul y calorías en naranja), escaladas dinámicamente según los valores máximos.
-- **Línea de Trayectoria Continuo (Path):** Traza una línea suave uniendo los puntos de pasos diarios/semanales, rematada con nodos en círculos concéntricos.
+- **Barras Multi-métrica Simultáneas:** Renderiza por cada periodo tres barras contiguas (distancia en verde, pasos en azul y calorías en naranja), escaladas dinámicamente según los valores máximos del periodo.
+- **Línea de Trayectoria Continua (Path):** Traza una línea suave uniendo los puntos de pasos diarios/semanales, rematada con nodos en círculos concéntricos.
+- **Estado Vacío Estético:** Si el usuario no cuenta con entrenamientos registrados (`sinDatos == true`), se ocultan la leyenda de colores y el Canvas para renderizar una sección con un diseño visual limpio con el icono `Icons.Default.BarChart` y un texto de ayuda que invita al usuario a realizar su primer entrenamiento.
 
 ---
 
 ### Comunidad y Rankings Grupales (GruposTvScreen)
-- **Gestión de Grupos:** Permite al usuario visualizar los grupos en los que participa, unirse a un grupo mediante su código único de invitación y crear nuevos grupos desde la TV.
+- **Gestión de Grupos y Roles:** Permite al usuario visualizar los grupos en los que participa, unirse a un grupo mediante su código único de invitación y crear nuevos grupos desde la TV. El sistema diferencia si el usuario actual es el creador/dueño del grupo (`idUsuarioActual == idCreadorGrupo`).
 - **Carga Concurrente (Async / Await):** Al seleccionar un grupo, `GrupoTvViewModel` dispara consultas paralelas para obtener la lista de miembros (`getMiembros`) y la tabla de clasificación o ranking (`getRanking`).
 - **Tabla de Posiciones (Ranking):** Muestra el medallero e icono de podio (oro, plata, bronce) con la distancia recorrida y pasos acumulados por cada integrante del grupo.
-- **Salida de Grupo:** Incluye la opción para abandonar un grupo con actualización inmediata de la UI.
+- **Acciones Diferenciadas por Rol (Eliminar vs. Salir):**
+  - **Dueño / Creador del Grupo:** No tiene la opción de salir del grupo, sino de **Eliminar el grupo**. Al dar clic en "Eliminar grupo", se despliega una alerta de confirmación con el mensaje: `¿Quieres eliminar el grupo?  (el grupo se eliminara junto con todos los miembros)`. Al confirmar, el grupo se elimina por completo de la base de datos (con cascada de miembros).
+  - **Miembro Común:** Tiene disponible únicamente la opción **Salir del grupo**, que le permite abandonar la comunidad compartida manteniendo el grupo activo para los demás integrantes.
+- **Mejoras UX / UI de Interacción:**
+  - **Color de fondo en pestañas:** Se personalizó el indicador del `TabRow` usando `TabRowDefaults.PillIndicator` con color de fondo `PrimaryContainer` (verde oscuro) e inactivo `Transparent`, eliminando el fondo blanco plano por defecto.
+  - **Corrección en Hover de Unirse a Otro Grupo:** El botón de "Unirse a otro grupo" en el detalle de métricas ahora utiliza una escala enfocada moderada (`1.02f`) y un cambio dinámico de contenedor a `Primary` (verde brillante) con texto e icono en negro al enfocarse, previniendo que se agrande desproporcionadamente en pantalla completa.
 
 ---
 
@@ -177,12 +188,13 @@ tv/src/main/java/mx/utng/cala/tv/
 
 | Método | Endpoint | ViewModel / Componente | Descripción |
 |---|---|---|---|
-| `GET` | `/api/grupos/usuario/{idUsuario}` | `GrupoTvViewModel` | Obtiene la lista de grupos a los que pertenece el usuario. |
-| `POST` | `/api/grupos/crear` | `GrupoTvViewModel` | Crea un nuevo grupo de entrenamiento indicando nombre y descripción. |
-| `POST` | `/api/grupos/unirse` | `GrupoTvViewModel` | Une al usuario a un grupo mediante su código de invitación. |
-| `GET` | `/api/grupos/{idGrupo}/miembros` | `GrupoTvViewModel` | Retorna los miembros registrados en el grupo especificado. |
-| `GET` | `/api/grupos/{idGrupo}/ranking` | `GrupoTvViewModel` | Retorna la tabla de clasificación ordenada por kilometraje del grupo. |
-| `DELETE` | `/api/grupos/{idGrupo}/salir` | `GrupoTvViewModel` | Elimina la pertenencia del usuario al grupo. |
+| `GET` | `/api/grupos/usuario/{idUsuario}` | `GrupoTvViewModel` | Obtiene la lista de grupos a los que pertenece el usuario (incluye propiedad `idCreador`). |
+| `POST` | `/api/grupos` | `GrupoTvViewModel` | Crea un nuevo grupo de entrenamiento y registra al creador en la columna `id_creador` y la relación `usuario_grupo`. |
+| `POST` | `/api/grupos/unirse` | `GrupoTvViewModel` | Une al usuario a un grupo mediante su código de invitación de 6 caracteres. |
+| `GET` | `/api/grupos/{idGrupo}/miembros` | `GrupoTvViewModel` | Retorna los miembros registrados en el grupo con su rendimiento de la semana en curso. |
+| `GET` | `/api/grupos/{idGrupo}/ranking` | `GrupoTvViewModel` | Retorna la tabla de posiciones semanal de los miembros del grupo por distancia recorrida. |
+| `DELETE` | `/api/grupos/{idGrupo}/miembros/{idUsuario}` | `GrupoTvViewModel` | Elimina la pertenencia del usuario al grupo (salir del grupo). |
+| `DELETE` | `/api/grupos/{idGrupo}?idUsuario={id}` | `GrupoTvViewModel` | Elimina el grupo y sus miembros en cascada (solo permitido al dueño/creador). |
 
 ---
 

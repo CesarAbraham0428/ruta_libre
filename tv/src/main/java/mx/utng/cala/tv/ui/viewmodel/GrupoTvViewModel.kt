@@ -104,6 +104,22 @@ class GrupoTvViewModel : ViewModel() {
         }
     }
 
+    fun eliminarGrupo(idUsuario: Int, idGrupo: Int, alTenerExito: () -> Unit = {}) {
+        viewModelScope.launch {
+            _estadoUi.value = _estadoUi.value.copy(estaCargando = true, mensajeError = null)
+            repositorio.eliminarGrupo(idGrupo, idUsuario).fold(
+                onSuccess = {
+                    _estadoUi.value = _estadoUi.value.copy(
+                        listaGrupos = _estadoUi.value.listaGrupos.filter { it.idGrupo != idGrupo },
+                        estaCargando = false
+                    )
+                    alTenerExito()
+                },
+                onFailure = { error -> mostrarError(error) }
+            )
+        }
+    }
+
     fun limpiarError() {
         _estadoUi.value = _estadoUi.value.copy(mensajeError = null)
     }

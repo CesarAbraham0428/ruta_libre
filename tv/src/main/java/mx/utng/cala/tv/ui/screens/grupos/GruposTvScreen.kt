@@ -52,6 +52,7 @@ fun GruposTvScreen(
     var grupoSeleccionadoNombre by remember { mutableStateOf("") }
     var grupoSeleccionadoCodigo by remember { mutableStateOf("") }
     var grupoSeleccionadoDescripcion by remember { mutableStateOf<String?>(null) }
+    var grupoSeleccionadoIdCreador by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) {
         grupoViewModel.cargarGruposDeUsuario(idUsuario)
@@ -82,11 +83,12 @@ fun GruposTvScreen(
                         estadoUi = estadoUi,
                         alSeleccionarCrear = { vistaActual = VistaGruposTv.CREAR },
                         alSeleccionarUnirse = { vistaActual = VistaGruposTv.UNIRSE },
-                        alSeleccionarGrupo = { id, nombre, codigo, descripcion ->
+                        alSeleccionarGrupo = { id, nombre, codigo, descripcion, idCreador ->
                             grupoSeleccionadoId = id
                             grupoSeleccionadoNombre = nombre
                             grupoSeleccionadoCodigo = codigo
                             grupoSeleccionadoDescripcion = descripcion
+                            grupoSeleccionadoIdCreador = idCreador
                             grupoViewModel.cargarDetalleGrupo(id)
                             vistaActual = VistaGruposTv.DETALLE
                         }
@@ -119,6 +121,7 @@ fun GruposTvScreen(
                 VistaGruposTv.DETALLE -> {
                     PantallaDetalleGrupoTv(
                         idUsuarioActual = idUsuario,
+                        idCreadorGrupo = grupoSeleccionadoIdCreador,
                         nombreGrupo = grupoSeleccionadoNombre,
                         codigoGrupo = grupoSeleccionadoCodigo,
                         descripcionGrupo = grupoSeleccionadoDescripcion,
@@ -126,6 +129,13 @@ fun GruposTvScreen(
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->
                                 grupoViewModel.salirDeGrupo(idUsuario, idGrupo) {
+                                    vistaActual = VistaGruposTv.PRINCIPAL
+                                }
+                            }
+                        },
+                        alEliminarGrupo = {
+                            grupoSeleccionadoId?.let { idGrupo ->
+                                grupoViewModel.eliminarGrupo(idUsuario, idGrupo) {
                                     vistaActual = VistaGruposTv.PRINCIPAL
                                 }
                             }
@@ -146,7 +156,7 @@ fun PantallaPrincipalGruposTv(
     estadoUi: EstadoUiGrupoTv,
     alSeleccionarCrear: () -> Unit,
     alSeleccionarUnirse: () -> Unit,
-    alSeleccionarGrupo: (Int, String, String, String?) -> Unit
+    alSeleccionarGrupo: (Int, String, String, String?, Int?) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -236,7 +246,7 @@ fun PantallaPrincipalGruposTv(
                                 descripcion = grupo.descripcion,
                                 codigo = grupo.codigo,
                                 alHacerClick = {
-                                    alSeleccionarGrupo(grupo.idGrupo, grupo.nombre, grupo.codigo, grupo.descripcion)
+                                    alSeleccionarGrupo(grupo.idGrupo, grupo.nombre, grupo.codigo, grupo.descripcion, grupo.idCreador)
                                 }
                             )
                         }
@@ -767,21 +777,26 @@ fun PantallaUnirseGrupoTv(
 @Composable
 fun PantallaDetalleGrupoTv(
     idUsuarioActual: Int,
+    idCreadorGrupo: Int?,
     nombreGrupo: String,
     codigoGrupo: String,
     descripcionGrupo: String?,
     estadoUi: EstadoUiGrupoTv,
     alSalirGrupo: () -> Unit,
+    alEliminarGrupo: () -> Unit,
     alVolver: () -> Unit
 ) {
     var pestanaSeleccionada by remember { mutableStateOf(0) }
     var mostrarConfirmarSalir by remember { mutableStateOf(false) }
+    var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
 
     val miembros = estadoUi.listaMiembros
     val distanciaTotal = miembros.sumOf { it.distancia }
     val caloriasTotal = miembros.sumOf { it.calorias }
     val tiempoTotalSegundos = miembros.sumOf { it.tiempo }
     val tiempoTotalMinutos = tiempoTotalSegundos / 60
+
+    val esDueño = idUsuarioActual == idCreadorGrupo
 
     Column(
         modifier = Modifier
@@ -810,7 +825,13 @@ fun PantallaDetalleGrupoTv(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { mostrarConfirmarSalir = true },
+                onClick = { 
+                    if (esDueño) {
+                        mostrarConfirmarEliminar = true
+                    } else {
+                        mostrarConfirmarSalir = true
+                    }
+                },
                 colors = ButtonDefaults.colors(
                     containerColor = Error,
                     contentColor = Color.White
@@ -818,12 +839,15 @@ fun PantallaDetalleGrupoTv(
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
             ) {
                 Icon(
-                    imageVector = Icons.Default.ExitToApp,
+                    imageVector = if (esDueño) Icons.Default.Delete else Icons.Default.ExitToApp,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Salir del grupo", fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (esDueño) "Eliminar grupo" else "Salir del grupo", 
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -880,7 +904,16 @@ fun PantallaDetalleGrupoTv(
         // Pestañas (TabRow de TV Material 3)
         TabRow(
             selectedTabIndex = pestanaSeleccionada,
-            modifier = Modifier.fillMaxWidth().background(Background)
+            modifier = Modifier.fillMaxWidth().background(Background),
+            indicator = { tabPositions ->
+                if (pestanaSeleccionada < tabPositions.size) {
+                    TabRowDefaults.PillIndicator(
+                        currentTabPosition = tabPositions[pestanaSeleccionada],
+                        activeColor = PrimaryContainer,
+                        inactiveColor = Color.Transparent
+                    )
+                }
+            }
         ) {
             Tab(
                 selected = pestanaSeleccionada == 0,
@@ -953,8 +986,11 @@ fun PantallaDetalleGrupoTv(
                         onClick = alVolver,
                         colors = ButtonDefaults.colors(
                             containerColor = PrimaryContainer,
-                            contentColor = Color.White
+                            contentColor = Color.White,
+                            focusedContainerColor = Primary,
+                            focusedContentColor = Color.Black
                         ),
+                        scale = ButtonDefaults.scale(focusedScale = 1.02f),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                     ) {
@@ -965,11 +1001,11 @@ fun PantallaDetalleGrupoTv(
                             Icon(
                                 imageVector = Icons.Default.Groups,
                                 contentDescription = null,
-                                tint = Primary,
+                                tint = androidx.compose.material3.LocalContentColor.current,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unirse to otro grupo", fontWeight = FontWeight.Bold)
+                            Text("Unirse a otro grupo", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1017,8 +1053,11 @@ fun PantallaDetalleGrupoTv(
                         onClick = alVolver,
                         colors = ButtonDefaults.colors(
                             containerColor = PrimaryContainer,
-                            contentColor = Color.White
+                            contentColor = Color.White,
+                            focusedContainerColor = Primary,
+                            focusedContentColor = Color.Black
                         ),
+                        scale = ButtonDefaults.scale(focusedScale = 1.02f),
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                     ) {
@@ -1029,7 +1068,7 @@ fun PantallaDetalleGrupoTv(
                             Icon(
                                 imageVector = Icons.Default.Groups,
                                 contentDescription = null,
-                                tint = Primary,
+                                tint = androidx.compose.material3.LocalContentColor.current,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -1074,6 +1113,47 @@ fun PantallaDetalleGrupoTv(
             dismissButton = {
                 androidx.compose.material3.OutlinedButton(
                     onClick = { mostrarConfirmarSalir = false },
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Text("CANCELAR", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (mostrarConfirmarEliminar) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { mostrarConfirmarEliminar = false },
+            containerColor = SurfaceVariant,
+            title = {
+                Text(
+                    text = "Eliminar grupo",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Quieres eliminar el grupo?  (el grupo se eliminara junto con todos los miembros)",
+                    color = OnSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        mostrarConfirmarEliminar = false
+                        alEliminarGrupo()
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Error)
+                ) {
+                    Text("ELIMINAR GRUPO", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { mostrarConfirmarEliminar = false },
                     colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                 ) {
                     Text("CANCELAR", fontWeight = FontWeight.Bold)
