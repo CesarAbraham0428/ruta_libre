@@ -1,6 +1,6 @@
-# Backend API REST — Ruta Libre
+# Backend API REST y MQTT — Ruta Libre
 
-Documentación técnica del backend desarrollado en Node.js + Express + PostgreSQL con PostGIS.
+Documentación técnica del backend desarrollado en Node.js + Express + PostgreSQL con PostGIS, JWT Auth y comunicación MQTT en tiempo real con HiveMQ Cloud.
 
 ---
 
@@ -10,40 +10,53 @@ Documentación técnica del backend desarrollado en Node.js + Express + PostgreS
 2. [Tecnologías](#tecnologías)
 3. [Configuración del proyecto](#configuración-del-proyecto)
 4. [Arquitectura](#arquitectura)
-5. [Base de datos](#base-de-datos)
-6. [Endpoints](#endpoints)
+5. [Servicio MQTT](#servicio-mqtt)
+6. [Base de datos](#base-de-datos)
+7. [Autenticación y Seguridad (JWT)](#autenticación-y-seguridad-jwt)
+8. [Endpoints](#endpoints)
+   - [Estado de la API](#estado-de-la-api)
    - [Auth](#auth)
    - [Usuarios](#usuarios)
+   - [Dispositivos y Vinculación](#dispositivos-y-vinculación)
    - [Entrenamientos](#entrenamientos)
    - [Rutas](#rutas)
    - [Metas](#metas)
    - [Grupos](#grupos)
    - [Notificaciones](#notificaciones)
-7. [Flujo de registro de un entrenamiento](#flujo-de-registro-de-un-entrenamiento)
-8. [Manejo de errores](#manejo-de-errores)
+9. [Flujos del sistema](#flujos-del-sistema)
+   - [Flujo de vinculación de dispositivos (Android TV y Wear OS)](#flujo-de-vinculación-de-dispositivos-android-tv-y-wear-os)
+   - [Flujo de registro y finalización de entrenamiento](#flujo-de-registro-y-finalización-de-entrenamiento)
+10. [Manejo de errores](#manejo-de-errores)
+11. [Consideraciones sobre Contenido Multimedia y APIs de Terceros](#consideraciones-sobre-contenido-multimedia-y-apis-de-terceros)
 
 ---
 
 ## Descripción general
 
-Backend monolítico en Node.js que expone una API REST para las tres aplicaciones del ecosistema Ruta Libre: móvil (Android), smartwatch (Wear OS) y Smart TV (Android TV).
+Backend monolítico en Node.js + Express que expone una API REST e integra pub/sub en tiempo real mediante MQTT (HiveMQ Cloud) para las tres aplicaciones del ecosistema **Ruta Libre**:
+- **Aplicación Móvil (Android):** Registro, seguimiento GPS, gestión de perfil/metas/grupos y vinculación de pantallas/relojes.
+- **Smartwatch (Wear OS):** Monitoreo de sensores de salud, registro de entrenamientos y notificaciones instantáneas.
+- **Smart TV (Android TV):** Visualización de métricas en pantalla grande mediante sincronización de sesión por código temporal.
 
-Se comunica con PostgreSQL 16 + PostGIS para almacenamiento de datos y consultas geoespaciales.
+Se comunica con PostgreSQL 16 + PostGIS (soporta hosting local o en la nube como Neon DB) para el almacenamiento relacional, consultas geoespaciales y persistencia de métricas.
 
 ---
 
 ## Tecnologías
 
-| Componente | Tecnología | Versión |
+| Componente | Tecnología | Versión / Detalle |
 |---|---|---|
 | Runtime | Node.js | 20+ |
 | Framework web | Express | 4.19.x |
 | Cliente PostgreSQL | `pg` | 8.11.x |
-| Variables de entorno | `dotenv` | 16.4.x |
+| Extensión Geoespacial | PostGIS | 3.x |
+| Mensajería MQTT | `mqtt` | 5.14.x (Conexión segura TLS/MQTTS con HiveMQ Cloud) |
+| Cifrado de Contraseñas | `bcryptjs` | 3.0.x |
+| Autenticación | Custom JWT (HMAC-SHA256 via `crypto`) | Tokens sign/verify |
+| Variables de Entorno | `dotenv` | 16.4.x |
 | CORS | `cors` | 2.8.x |
-| Hashing de contraseñas | `bcryptjs` | 3.0.x |
 | Dev | `nodemon` | 3.1.x |
-| Base de datos | PostgreSQL + PostGIS | 16 |
+| Base de Datos Cloud | Neon PostgreSQL / Local | PostgreSQL 16 |
 
 ---
 
@@ -51,20 +64,36 @@ Se comunica con PostgreSQL 16 + PostGIS para almacenamiento de datos y consultas
 
 ### Archivo `.env`
 
-```
+```env
+# Conexión a Base de Datos (Neon DB Cloud o PostgreSQL local)
+DATABASE_URL=url_database
+channel_binding=require
+
+# Variables para conexión local alternativa
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=********
 DB_NAME=rutaLibre
+
+# Puerto del servidor backend
+PORT=3000
+
+# Secreto para firma de tokens JWT (mínimo 32 caracteres)
+JWT_SECRET=clave_secreta
+
+# Configuración del Broker MQTT (HiveMQ Cloud TLS)
+MQTT_HOST=host_mqtt
+MQTT_PORT=8883
+MQTT_USERNAME=rutalibre
+MQTT_PASSWORD=rutalibre
 ```
 
 ### Scripts disponibles
 
 ```bash
-npm start       # Inicia el servidor en producción
-npm run dev     # Inicia con nodemon (recarga automática)
-npm run test-api # Ejecuta prueba de integración (src/api_test.js)
+npm start       # Inicia el servidor en producción (node src/index.js)
+npm run dev     # Inicia en modo desarrollo con nodemon (recarga automática)
 ```
 
 ### Inicialización
@@ -75,12 +104,7 @@ npm install
 npm run dev
 ```
 
-El servidor se levanta en `http://0.0.0.0:3000` y muestra:
-
-```
-Servidor de Ruta Libre escuchando en http://0.0.0.0:3000
-Endpoints disponibles bajo /api/
-```
+El servidor escucha en `http://0.0.0.0:3000` (aceptando peticiones locales y desde emuladores Android `10.0.2.2`).
 
 ---
 
@@ -91,93 +115,176 @@ backend/
 ├── .env                        # Variables de entorno
 ├── package.json
 ├── src/
-│   ├── index.js                # Punto de entrada, middlewares y montado de rutas
-│   ├── db.js                   # Pool de conexión a PostgreSQL
-│   ├── api_test.js             # Script de prueba de integración
+│   ├── index.js                # Punto de entrada, middlewares global y servidor HTTP/MQTT
+│   ├── db.js                   # Conexión adaptativa a PostgreSQL (Pool / Neon Cloud)
+│   ├── authToken.js            # Firma y verificación de Tokens JWT (crypto HMAC-SHA256)
+│   ├── mqtt.js                 # Cliente MQTT (conexion segura MQTTS y publicación de eventos)
+│   ├── api_test.js             # Script de prueba de integración de endpoints
+│   ├── middleware/
+│   │   └── auth.js             # Middlewares `requireUser` y `requireDevice`
 │   └── routes/
-│       ├── auth.js             # Registro e inicio de sesión (bcrypt)
-│       ├── usuarios.js         # Consulta de perfil de usuario
-│       ├── entrenamientos.js   # CRUD de sesiones de entrenamiento (transaccional)
-│       ├── rutas.js            # Coordenadas de rutas (JSONB)
+│       ├── auth.js             # Registro e inicio de sesión (bcrypt + JWT)
+│       ├── usuarios.js         # Perfil de usuario, actualización de peso y credenciales
+│       ├── dispositivos.js     # Gestión de dispositivos, vinculación TV/Wear OS y sesiones
+│       ├── entrenamientos.js   # CRUD de entrenamientos (transaccional + PostGIS + eventos MQTT)
+│       ├── rutas.js            # Coordenadas geoespaciales de rutas (JSONB)
 │       ├── metas.js            # Metas diarias personalizadas
-│       ├── grupos.js           # Grupos y rankings semanales
+│       ├── grupos.js           # Grupos, miembros y rankings semanales
 │       └── notificaciones.js   # Notificaciones de logros
 ```
 
-### Middlewares globales (index.js)
+### Middlewares globales (`index.js`)
 
 ```javascript
-app.use(cors());                     # Habilitar CORS para peticiones cruzadas
-app.use(express.json());             # Parsear body JSON
-app.use(express.urlencoded({ extended: true }));  # Parsear form-urlencoded
+app.use(cors());                                    // Habilitar peticiones origen cruzado
+app.use(express.json());                            // Parsear cuerpos JSON
+app.use(express.urlencoded({ extended: true }));     // Parsear urlencoded
 ```
 
-El servidor escucha en `0.0.0.0` para aceptar conexiones desde cualquier interfaz de red, incluyendo las que vienen del emulador Android (`10.0.2.2`).
+---
 
-### Endpoint de estado
+## Servicio MQTT
 
-```http
-GET /api/status
-→ { "status": "online", "timestamp": "...", "service": "Ruta Libre REST API" }
+El backend incluye un cliente MQTT integrado (`src/mqtt.js`) que se conecta automáticamente a **HiveMQ Cloud** sobre TLS (`mqtts://`, puerto 8883).
+
+### Características
+- **Reconexión automática:** Reintenta la conexión cada 5 segundos si se interrumpe el canal.
+- **Publicación de eventos:** Los eventos se publican con `QoS 1` en formato JSON estructurado.
+
+### Estructura estándar del Payload MQTT
+
+```json
+{
+  "version": 1,
+  "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "fechaEvento": "2026-07-23T02:00:00.000Z",
+  "data": { ... }
+}
 ```
+
+### Tópicos y Eventos Notificados
+
+| Evento | Tópico | Generado En |
+|---|---|---|
+| Entrenamiento iniciado | `rutalibre/usuarios/{idUsuario}/entrenamientos/iniciado` | `POST /api/entrenamientos/iniciar` |
+| Entrenamiento finalizado | `rutalibre/usuarios/{idUsuario}/entrenamientos/finalizado` | `PUT /api/entrenamientos/finalizar` |
+| Meta completada | `rutalibre/usuarios/{idUsuario}/metas/completada` | Transacción de finalización de entrenamiento |
+| Cierre masivo de sesiones | `rutalibre/usuarios/{idUsuario}/sesion/cerrada` | `DELETE /api/dispositivos/sesion/todos` |
+| Dispositivo desvinculado | `rutalibre/usuarios/{idUsuario}/dispositivos/{idDispositivo}/desvinculado` | `DELETE /api/dispositivos/:idDispositivo` |
 
 ---
 
 ## Base de datos
 
-### Conexión (`db.js`)
+### Conexión Adaptativa (`db.js`)
+
+Detecta automáticamente la presencia de la variable `DATABASE_URL` (Neon PostgreSQL Cloud con SSL) o utiliza la configuración por parámetros (`DB_HOST`, `DB_USER`, etc.).
 
 ```javascript
-const pool = new Pool({
-  host: process.env.DB_HOST,       // localhost
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL, max: 5, idleTimeoutMillis: 30000 }
+    : { host: process.env.DB_HOST, port: process.env.DB_PORT, user: process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.DB_NAME }
+);
 ```
 
-Se utiliza un **Pool** de conexiones de `pg` para manejar múltiples consultas concurrentes. Se exporta `{ query: (text, params) => pool.query(text, params), pool }`.
-
-### Tablas
+### Tablas del Sistema
 
 | Tabla | Descripción |
 |---|---|
-| `usuario` | Usuarios del sistema |
-| `grupo` | Grupos para compartir resultados |
-| `usuario_grupo` | Relación M:N usuario-grupo (PK compuesta) |
-| `ruta` | Coordenadas JSONB del recorrido |
-| `entrenamiento` | Sesiones de actividad física |
-| `metas` | Metas diarias personalizadas |
-| `notificacion` | Notificaciones de logros |
+| `usuario` | Usuarios registrados, credenciales y datos antropométricos (peso). |
+| `dispositivo` | Pantallas TV, relojes Wear OS y dispositivos vinculados con estado de sesión. |
+| `grupo` | Grupos comunitarios para competir y compartir estadísticas. |
+| `usuario_grupo` | Relación M:N usuario-grupo (PK compuesta `(id_usuario, id_grupo)`). |
+| `ruta` | Almacenamiento de coordenadas GPS continuas en formato `JSONB`. |
+| `entrenamiento` | Sesiones de actividad física con geometría de inicio/fin PostGIS. |
+| `metas` | Metas diarias personalizadas (distancia, pasos, calorías, tiempo). |
+| `notificacion` | Notificaciones de logros y su estado de lectura por dispositivo. |
+
+### Esquema de `usuario`
+
+```sql
+CREATE TABLE usuario (
+    id_usuario SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    nombre_usuario VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    peso_kg NUMERIC(5,2) DEFAULT NULL,
+    fecha_registro TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Esquema de `dispositivo`
+
+```sql
+CREATE TABLE dispositivo (
+    id_dispositivo SERIAL PRIMARY KEY,
+    id_usuario INTEGER REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    tipo VARCHAR(20) NOT NULL, -- 'tv', 'wear', 'movil'
+    nombre VARCHAR(100) NOT NULL,
+    codigo_vinculacion VARCHAR(10) UNIQUE,
+    codigo_expira TIMESTAMP,
+    token_hash VARCHAR(255),
+    vinculado BOOLEAN DEFAULT FALSE,
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_vinculacion TIMESTAMP
+);
+```
 
 ### Esquema de `entrenamiento`
 
-| Columna | Tipo | Descripción |
-|---|---|---|
-| `id_entrenamiento` | `SERIAL PRIMARY KEY` | ID autogenerado |
-| `id_usuario` | `INTEGER NOT NULL` | FK → usuario |
-| `id_ruta` | `INTEGER` | FK → ruta (nullable) |
-| `pasos` | `INTEGER DEFAULT 0` | Pasos totales |
-| `calorias` | `INTEGER DEFAULT 0` | Calorías quemadas |
-| `distancia` | `NUMERIC(10,2) DEFAULT 0` | Distancia en km |
-| `tiempo` | `INTEGER DEFAULT 0` | Tiempo en segundos (0 = no finalizado) |
-| `fecha_inicio` | `TIMESTAMP DEFAULT NOW()` | Inicio del entrenamiento |
-| `punto_inicio` | `GEOMETRY(Point, 4326)` | Punto de inicio (PostGIS) |
-| `punto_fin` | `GEOMETRY(Point, 4326)` | Punto de fin (PostGIS) |
-
-### Columnas calculadas con PostGIS
-
-Los puntos de inicio y fin se almacenan como geometrías PostGIS usando `ST_MakePoint(longitud, latitud)` con SRID 4326. Al leer se extraen con:
-
 ```sql
-ST_Y(punto_inicio) AS lat_ini,
-ST_X(punto_inicio) AS lng_ini
+CREATE TABLE entrenamiento (
+    id_entrenamiento SERIAL PRIMARY KEY,
+    id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+    id_ruta INTEGER REFERENCES ruta(id_ruta),
+    pasos INTEGER DEFAULT 0,
+    calorias INTEGER DEFAULT 0,
+    distancia NUMERIC(10,2) DEFAULT 0,
+    tiempo INTEGER DEFAULT 0, -- en segundos (0 = activo/no finalizado)
+    fecha_inicio TIMESTAMP DEFAULT NOW(),
+    punto_inicio GEOMETRY(Point, 4326),
+    punto_fin GEOMETRY(Point, 4326)
+);
 ```
 
 ---
 
+## Autenticación y Seguridad (JWT)
+
+El backend implementa autenticación basada en tokens JWT firmados mediante **HMAC-SHA256** (`src/authToken.js`).
+
+### Tipos de Tokens
+
+1. **Token de Usuario (`tipoToken: "usuario"`):** Se emite al realizar Login (`POST /api/auth/login`). Válido por 7 días.
+2. **Token de Dispositivo (`tipoToken: "dispositivo"`):** Se emite a la Smart TV o Smartwatch al completar el proceso de vinculación. Válido por 30 días. Contiene `idDispositivo`, `idUsuario` y `tipo`.
+
+### Middlewares de Protección (`src/middleware/auth.js`)
+
+- `requireUser`: Exige la cabecera `Authorization: Bearer <token_usuario>`. Inyecta `req.auth = { idUsuario, nombreUsuario, ... }`.
+- `requireDevice`: Exige la cabecera `Authorization: Bearer <token_dispositivo>`. Inyecta `req.auth = { idDispositivo, idUsuario, tipo, ... }`.
+
+---
+
 ## Endpoints
+
+### Estado de la API
+
+#### `GET /api/status`
+
+Consulta el estado operativo del servicio REST y del broker MQTT.
+
+**Respuesta `200 OK`:**
+```json
+{
+  "status": "online",
+  "timestamp": "2026-07-23T02:47:00.000Z",
+  "service": "Ruta Libre REST API",
+  "mqtt": "connected"
+}
+```
+
+---
 
 ### Auth
 
@@ -185,58 +292,49 @@ ST_X(punto_inicio) AS lng_ini
 
 #### `POST /register`
 
-Registra un nuevo usuario con contraseña hasheada (bcrypt, salt rounds = 10).
+Registra un nuevo usuario en la plataforma.
 
-**Request:**
+**Request Body:**
 ```json
 {
-  "nombre": "string",
-  "nombreUsuario": "string",
-  "password": "string"
+  "nombre": "Juan Pérez",
+  "nombreUsuario": "juanp",
+  "password": "miPassword123"
 }
 ```
 
-**Validaciones:**
-- Todos los campos son obligatorios → 400
-- `nombre_usuario` debe ser único → 400 `"Nombre de usuario no disponible cambia tu nombre de usuario"`
-
-**SQL:** `SELECT id_usuario FROM usuario WHERE nombre_usuario = $1` (pre-validación), luego `INSERT INTO usuario (nombre, nombre_usuario, password, fecha_registro) VALUES ($1, $2, $3, NOW())`
-
-**Response:** `201` (sin cuerpo)
+**Respuestas:**
+- `201 Created`: Usuario registrado con éxito.
+- `400 Bad Request`: Faltan campos u el nombre de usuario ya está registrado (`"Nombre de usuario no disponible cambia tu nombre de usuario"`).
 
 ---
 
 #### `POST /login`
 
-Inicia sesión verificando la contraseña con bcrypt.
+Autentica al usuario mediante contraseña hasheada con bcrypt y genera un token JWT de usuario.
 
-**Request:**
+**Request Body:**
 ```json
 {
-  "nombreUsuario": "string",
-  "password": "string"
+  "nombreUsuario": "juanp",
+  "password": "miPassword123"
 }
 ```
 
-**Validaciones:**
-- Ambos campos obligatorios → 400
-- Usuario no encontrado o contraseña incorrecta → 401 `"El usuario o la contraseña es incorrecto"`
-
-**SQL:** `SELECT id_usuario, nombre, nombre_usuario, password FROM usuario WHERE nombre_usuario = $1`
-
-**Autenticación:** `bcrypt.compare(password, user.password)` contra el hash almacenado.
-
-**Token:** `token_simulado_{idUsuario}_{timestamp}` (no es JWT, no se verifica en requests posteriores).
-
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "idUsuario": 1,
-  "nombre": "string",
-  "nombreUsuario": "string",
-  "token": "token_simulado_1_1689123456789"
+  "nombre": "Juan Pérez",
+  "nombreUsuario": "juanp",
+  "pesoKg": 75.5,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
+
+**Respuestas de error:**
+- `400 Bad Request`: Faltan campos obligatorios.
+- `401 Unauthorized`: `"El usuario o la contraseña es incorrecto"`.
 
 ---
 
@@ -246,17 +344,214 @@ Inicia sesión verificando la contraseña con bcrypt.
 
 #### `GET /:id`
 
-Obtiene datos del perfil de un usuario.
+Obtiene la información del perfil del usuario.
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "idUsuario": 1,
-  "nombre": "string",
-  "nombreUsuario": "string",
+  "nombre": "Juan Pérez",
+  "nombreUsuario": "juanp",
+  "pesoKg": 75.5,
   "fechaRegistro": "2026-01-15T10:30:00.000Z"
 }
 ```
+
+---
+
+#### `PUT /:id/peso`
+
+Actualiza el peso corporal en kilogramos del usuario (utilizado para el cálculo dinámico de calorías).
+
+**Request Body:**
+```json
+{
+  "pesoKg": 72.0
+}
+```
+
+**Validaciones:** `pesoKg` debe ser un número finito entre 20 y 300 kg.
+
+**Respuesta `200 OK`:**
+```json
+{
+  "pesoKg": 72.0
+}
+```
+
+---
+
+#### `PUT /:id`
+
+Actualiza la información general del perfil del usuario (nombre, peso y opcionalmente contraseña).
+
+**Request Body:**
+```json
+{
+  "nombre": "Juan Carlos Pérez",
+  "pesoKg": 74.0,
+  "password": "nuevaContrasena123"
+}
+```
+
+**Respuesta `200 OK`:**
+```json
+{
+  "message": "Usuario actualizado correctamente"
+}
+```
+
+---
+
+### Dispositivos y Vinculación
+
+`base: /api/dispositivos`
+
+#### `POST /solicitar-vinculacion`
+
+Llamado por **Smart TV** para generar un código temporal de 6 caracteres alfanuméricos de 10 minutos de vigencia.
+
+**Request Body:**
+```json
+{
+  "tipo": "tv",
+  "nombre": "Ruta Libre TV Sala"
+}
+```
+
+**Respuesta `201 Created`:**
+```json
+{
+  "idDispositivo": 12,
+  "codigo": "A7X3K9",
+  "expira": "2026-07-23T02:57:00.000Z",
+  "secreto": "dGhpcy1pcy1hLXNlY3JldC10b2tlbg..."
+}
+```
+
+---
+
+#### `POST /estado-vinculacion`
+
+Sondeo (polling) realizado por la **Smart TV** utilizando el `idDispositivo` y `secreto` obtenidos al solicitar la vinculación.
+
+**Request Body:**
+```json
+{
+  "idDispositivo": 12,
+  "secreto": "dGhpcy1pcy1hLXNlY3JldC10b2tlbg..."
+}
+```
+
+**Respuestas:**
+- **Pendiente `200 OK`:** `{ "estado": "pendiente" }`
+- **Expirado `200 OK`:** `{ "estado": "expirado" }`
+- **Vinculado `200 OK`:**
+  ```json
+  {
+    "estado": "vinculado",
+    "idUsuario": 1,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+  ```
+
+---
+
+#### `POST /vincular` `[Requiere Token Usuario]`
+
+Llamado por la **Aplicación Móvil** para autorizar un código ingresado por el usuario.
+
+**Request Body:**
+```json
+{
+  "codigo": "A7X3K9"
+}
+```
+
+**Respuesta `200 OK`:**
+```json
+{
+  "idDispositivo": 12,
+  "tipo": "tv",
+  "nombre": "Ruta Libre TV Sala",
+  "fechaVinculacion": "2026-07-23T02:50:00.000Z"
+}
+```
+
+---
+
+#### `POST /vincular-wear` `[Requiere Token Usuario]`
+
+Llamado por la **Aplicación Móvil** para registrar directamente el reloj smartwatch (Wear OS) asociado.
+
+**Request Body:**
+```json
+{
+  "nombre": "Galaxy Watch 6"
+}
+```
+
+**Respuesta `201 Created`:**
+```json
+{
+  "idDispositivo": 15,
+  "idUsuario": 1,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+---
+
+#### `GET /` `[Requiere Token Usuario]`
+
+Obtiene el listado de dispositivos vinculados activos del usuario.
+
+**Respuesta `200 OK`:**
+```json
+[
+  {
+    "idDispositivo": 12,
+    "tipo": "tv",
+    "nombre": "Ruta Libre TV Sala",
+    "activo": true,
+    "fechaVinculacion": "2026-07-23T02:50:00.000Z"
+  }
+]
+```
+
+---
+
+#### `GET /sesion/actual` `[Requiere Token Dispositivo]`
+
+Valida si la sesión del dispositivo actual sigue estando activa en el sistema.
+
+**Respuestas:**
+- `204 No Content`: Sesión válida.
+- `401 Unauthorized`: `"Sesión revocada"`.
+
+---
+
+#### `DELETE /sesion/actual` `[Requiere Token Dispositivo]`
+
+Cierra la sesión del dispositivo actual marcando `activo = FALSE`.
+
+**Respuesta:** `204 No Content`.
+
+---
+
+#### `DELETE /sesion/todos` `[Requiere Token Usuario]`
+
+Cierra todas las sesiones de dispositivos pertenecientes al usuario y emite el evento MQTT `rutalibre/usuarios/{idUsuario}/sesion/cerrada`.
+
+**Respuesta:** `204 No Content`.
+
+---
+
+#### `DELETE /:idDispositivo` `[Requiere Token Usuario]`
+
+Desvincula un dispositivo específico por su ID y publica el evento MQTT de desvinculación.
+
+**Respuesta:** `204 No Content`.
 
 ---
 
@@ -266,23 +561,16 @@ Obtiene datos del perfil de un usuario.
 
 #### `POST /iniciar`
 
-Crea un nuevo entrenamiento con valores en cero y retorna el ID asignado.
+Crea una sesión de entrenamiento vacía (`pasos=0, calorias=0, distancia=0, tiempo=0`) y emite el evento MQTT `entrenamientos/iniciado`.
 
-**Request:**
+**Request Body:**
 ```json
 {
   "idUsuario": 1
 }
 ```
 
-**SQL:**
-```sql
-INSERT INTO entrenamiento (id_usuario, fecha_inicio, pasos, calorias, distancia, tiempo) 
-VALUES ($1, NOW(), 0, 0, 0, 0) 
-RETURNING id_entrenamiento, id_usuario, id_ruta, pasos, calorias, distancia, fecha_inicio, tiempo
-```
-
-**Response `201`:**
+**Respuesta `201 Created`:**
 ```json
 {
   "idEntrenamiento": 5,
@@ -291,7 +579,7 @@ RETURNING id_entrenamiento, id_usuario, id_ruta, pasos, calorias, distancia, fec
   "pasos": 0,
   "calorias": 0,
   "distancia": 0.0,
-  "fechaInicio": "2026-06-27T15:00:00.000Z",
+  "fechaInicio": "2026-07-23T02:00:00.000Z",
   "tiempo": 0,
   "puntoInicioLat": null,
   "puntoInicioLng": null,
@@ -304,58 +592,45 @@ RETURNING id_entrenamiento, id_usuario, id_ruta, pasos, calorias, distancia, fec
 
 #### `PUT /finalizar`
 
-Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), actualiza las metas activas del usuario y genera notificaciones de logros. **Operación transaccional** (BEGIN/COMMIT/ROLLBACK).
+Finaliza el entrenamiento en una **transacción atómica SQL (BEGIN / COMMIT)**:
+1. Guarda la lista de coordenadas GPS en la tabla `ruta`.
+2. Actualiza métricas en `entrenamiento` y puntos geoespaciales PostGIS.
+3. Actualiza el progreso de todas las metas activas del usuario.
+4. Genera registros en `notificacion` y emite eventos MQTT por cada meta completada.
+5. Emite evento MQTT `entrenamientos/finalizado`.
 
-**Request:**
+**Request Body:**
 ```json
 {
   "idEntrenamiento": 5,
-  "pasos": 1500,
-  "calorias": 120,
-  "distancia": 2.5,
+  "pasos": 3500,
+  "calorias": 280,
+  "distancia": 4.25,
   "tiempo": 1800,
-  "coordenadas": [{ "longitud": -99.0, "latitud": 19.0 }],
-  "puntoInicio": { "longitud": -99.0, "latitud": 19.0 },
-  "puntoFin": { "longitud": -99.1, "latitud": 19.1 }
+  "coordenadas": [
+    { "longitud": -99.1332, "latitud": 19.4326 },
+    { "longitud": -99.1340, "latitud": 19.4330 }
+  ],
+  "puntoInicio": { "longitud": -99.1332, "latitud": 19.4326 },
+  "puntoFin": { "longitud": -99.1340, "latitud": 19.4330 }
 }
 ```
 
-**Proceso interno (transacción):**
-
-```
-1. BEGIN
-2. Si coordenadas.length > 0 → INSERT en ruta (JSON.stringify) → obtener idRuta
-3. UPDATE entrenamiento SET pasos, calorias, distancia, tiempo, id_ruta
-4. Si puntoInicio no es (0,0) → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-5. Si puntoFin no es (0,0) → ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-6. Para cada meta activa del usuario (terminada = FALSE):
-   a. Incrementar valor_actual según tipo:
-      - 'distancia' → +distancia (km)
-      - 'pasos' → +pasos
-      - 'calorias' → +calorias
-      - 'tiempo' → +tiempo/60.0 (segundos → minutos)
-   b. Si nuevo valor >= valor_objetivo → marcar terminada = TRUE
-   c. Si se completó → INSERT en notificacion con mensaje:
-      "¡Felicidades! Has completado tu meta diaria de {Tipo} ({valorObjetivo})."
-7. COMMIT
-8. En caso de error → ROLLBACK
-```
-
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "idEntrenamiento": 5,
   "idUsuario": 1,
-  "idRuta": null,
-  "pasos": 1500,
-  "calorias": 120,
-  "distancia": 2.5,
-  "fechaInicio": "2026-06-27T15:00:00.000Z",
+  "idRuta": 3,
+  "pasos": 3500,
+  "calorias": 280,
+  "distancia": 4.25,
+  "fechaInicio": "2026-07-23T02:00:00.000Z",
   "tiempo": 1800,
-  "puntoInicioLat": 19.0,
-  "puntoInicioLng": -99.0,
-  "puntoFinLat": 19.1,
-  "puntoFinLng": -99.1
+  "puntoInicioLat": 19.4326,
+  "puntoInicioLng": -99.1332,
+  "puntoFinLat": 19.4330,
+  "puntoFinLng": -99.1340
 }
 ```
 
@@ -363,36 +638,35 @@ Actualiza las métricas del entrenamiento, guarda la ruta (si hay coordenadas), 
 
 #### `GET /activo/:idUsuario`
 
-Obtiene el entrenamiento activo del usuario (aquel con `tiempo = 0` — no finalizado).
+Obtiene el entrenamiento en curso del usuario (con `tiempo = 0`).
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "idEntrenamiento": 5,
-  "fechaInicio": "2026-06-27T15:00:00.000Z",
+  "fechaInicio": "2026-07-23T02:00:00.000Z",
   "pasos": 0,
   "calorias": 0,
   "distancia": 0.0
 }
 ```
-
-**Response `404`:** `{ "error": "No hay entrenamiento activo" }`
+**Respuesta `404 Not Found`:** `{ "error": "No hay entrenamiento activo" }`
 
 ---
 
 #### `GET /usuario/:idUsuario`
 
-Historial completo de entrenamientos del usuario, ordenado por fecha descendente.
+Historial completo de entrenamientos del usuario ordenado descendentemente por fecha.
 
-**Response `200`:** Array de objetos con estructura de `PUT /finalizar`.
+**Respuesta `200 OK`:** Array de entrenamientos finalizados.
 
 ---
 
 #### `GET /semana/:idUsuario`
 
-Dashboard semanal: totales acumulados desde el lunes actual + desglose por día.
+Dashboard de rendimiento de la semana actual (desde el lunes). Retorna los 7 días de la semana (Lun–Dom).
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "distanciaTotal": 15.3,
@@ -407,15 +681,13 @@ Dashboard semanal: totales acumulados desde el lunes actual + desglose por día.
 }
 ```
 
-Los 7 días (Lun–Dom) siempre se devuelven; los días sin actividad aparecen con valores en cero.
-
 ---
 
 #### `GET /comparacion/:idUsuario`
 
-Comparación de rendimiento entre la semana actual y la anterior.
+Porcentaje de cambio entre la semana actual y la semana anterior.
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "distanciaMejora": 25.5,
@@ -425,15 +697,13 @@ Comparación de rendimiento entre la semana actual y la anterior.
 }
 ```
 
-Los valores representan el **porcentaje de cambio** (positivo = mejora, negativo = disminución). Si la semana anterior fue 0, devuelve `100.0` si la actual > 0, o `0.0` si ambas son 0.
-
 ---
 
 #### `GET /mes/:idUsuario`
 
-Dashboard mensual: totales acumulados del mes actual y desglose agrupado por semanas del mes.
+Dashboard mensual agrupado por semanas calendario del mes actual.
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "distanciaTotal": 42.71,
@@ -443,22 +713,18 @@ Dashboard mensual: totales acumulados del mes actual y desglose agrupado por sem
   "rendimientoSemanal": [
     { "semana": "Semana 1", "distancia": 10.5, "pasos": 12000, "calorias": 750, "tiempo": 4200 },
     { "semana": "Semana 2", "distancia": 12.0, "pasos": 15000, "calorias": 900, "tiempo": 5000 },
-    { "semana": "Semana 3", "distancia": 20.21, "pasos": 29842, "calorias": 1565, "tiempo": 10738 },
-    { "semana": "Semana 4", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 },
-    { "semana": "Semana 5", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 }
+    ...
   ]
 }
 ```
-
-Las semanas del mes se calculan dinámicamente según el calendario del mes actual (cada semana de lunes a domingo, o fracciones al inicio/fin del mes).
 
 ---
 
 #### `GET /comparacion-mes/:idUsuario`
 
-Comparación de rendimiento entre el mes actual y el mes anterior.
+Porcentaje de cambio entre el mes actual y el mes anterior.
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 {
   "distanciaMejora": 12.5,
@@ -468,8 +734,6 @@ Comparación de rendimiento entre el mes actual y el mes anterior.
 }
 ```
 
-Los valores representan el **porcentaje de cambio** respecto al mes anterior.
-
 ---
 
 ### Rutas
@@ -478,21 +742,13 @@ Los valores representan el **porcentaje de cambio** respecto al mes anterior.
 
 #### `POST /actualizar`
 
-Actualiza las coordenadas de una ruta existente.
+Actualiza el arreglo de coordenadas `JSONB` de una ruta existente.
 
-**Request:**
+**Request Body:**
 ```json
 {
   "idRuta": 3,
-  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
-}
-```
-
-**Response `200`:**
-```json
-{
-  "idRuta": 3,
-  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
+  "coordenadas": [{ "longitud": -99.1332, "latitud": 19.4326 }]
 }
 ```
 
@@ -500,15 +756,7 @@ Actualiza las coordenadas de una ruta existente.
 
 #### `GET /:id`
 
-Obtiene una ruta por su ID.
-
-**Response `200`:**
-```json
-{
-  "idRuta": 3,
-  "coordenadas": [{ "longitud": 19.0, "latitud": -99.0 }, ...]
-}
-```
+Obtiene los puntos geográficos guardados de una ruta.
 
 ---
 
@@ -518,9 +766,9 @@ Obtiene una ruta por su ID.
 
 #### `POST /`
 
-Crea una nueva meta diaria para un usuario. Valida que no exista una meta activa del mismo tipo.
+Crea una nueva meta diaria. Valida que el usuario no posea una meta activa no terminada del mismo tipo (`distancia`, `pasos`, `calorias`, `tiempo`).
 
-**Request:**
+**Request Body:**
 ```json
 {
   "idUsuario": 1,
@@ -529,13 +777,7 @@ Crea una nueva meta diaria para un usuario. Valida que no exista una meta activa
 }
 ```
 
-**Valores válidos para `tipoMeta`:** `distancia`, `pasos`, `calorias`, `tiempo` (se convierte a minúsculas internamente).
-
-**Validaciones:**
-- Todos los campos obligatorios → 400
-- Si ya existe una meta activa (no terminada) del mismo tipo → 400 `"Ya tienes una meta activa de este tipo"`
-
-**Response `201`:**
+**Respuesta `201 Created`:**
 ```json
 {
   "idMetas": 10,
@@ -551,42 +793,19 @@ Crea una nueva meta diaria para un usuario. Valida que no exista una meta activa
 
 #### `PUT /:idMetas`
 
-Actualiza una meta existente. Todos los campos del body son opcionales (usa `COALESCE`).
-
-**Request:**
-```json
-{
-  "valorObjetivo": 10.0
-}
-```
-
-**Response `200`:**
-```json
-{
-  "idMetas": 10,
-  "idUsuario": 1,
-  "tipoMeta": "DISTANCIA",
-  "valorObjetivo": 10.0,
-  "valorActual": 5.0,
-  "terminada": false
-}
-```
+Actualiza de manera parcial los valores de una meta.
 
 ---
 
 #### `DELETE /:idMetas`
 
-Elimina una meta.
-
-**Response:** `204` (sin cuerpo)
+Elimina una meta por su ID. Respuesta `204 No Content`.
 
 ---
 
 #### `GET /usuario/:idUsuario`
 
-Obtiene todas las metas del usuario, ordenadas por ID descendente.
-
-**Response `200`:** Array de objetos con estructura de `POST /`.
+Obtiene todas las metas registradas del usuario.
 
 ---
 
@@ -596,26 +815,24 @@ Obtiene todas las metas del usuario, ordenadas por ID descendente.
 
 #### `POST /`
 
-Crea un nuevo grupo con un código único de 6 caracteres (letras mayúsculas + dígitos). Si el código generado ya existe (error `23505`), se reintenta hasta 5 veces.
+Crea un grupo con un código único de 6 caracteres. Si el creador envía `idUsuario`, es registrado de inmediato en `usuario_grupo`.
 
-**Request:**
+**Request Body:**
 ```json
 {
   "nombre": "Corredores Matutinos",
-  "descripcion": "Grupo para correr en las mañanas",
+  "descripcion": "Grupo de entrenamiento matutino",
   "idUsuario": 1
 }
 ```
 
-Cuando se envía `idUsuario`, el usuario se registra automáticamente en `usuario_grupo` dentro de la misma transacción que crea el grupo.
-
-**Response `201`:**
+**Respuesta `201 Created`:**
 ```json
 {
   "idGrupo": 3,
   "nombre": "Corredores Matutinos",
   "codigo": "A7X3K9",
-  "descripcion": "Grupo para correr en las mañanas"
+  "descripcion": "Grupo de entrenamiento matutino"
 }
 ```
 
@@ -623,70 +840,39 @@ Cuando se envía `idUsuario`, el usuario se registra automáticamente en `usuari
 
 #### `POST /unirse`
 
-Un usuario se une a un grupo mediante su código (el código se convierte a mayúsculas).
+Une al usuario a un grupo mediante su código de 6 caracteres.
 
-**Request:**
+**Request Body:**
 ```json
 {
-  "idUsuario": 1,
+  "idUsuario": 2,
   "codigo": "A7X3K9"
 }
 ```
 
-Usa `ON CONFLICT DO NOTHING` para ignorar si el usuario ya pertenece al grupo.
+---
 
-**Response:** `200` (sin cuerpo) o `404` si el código no existe.
+#### `DELETE /:idGrupo/miembros/:idUsuario`
+
+Permite a un usuario salir de un grupo. Respuesta `204 No Content`.
 
 ---
 
 #### `GET /usuario/:idUsuario`
 
-Grupos a los que pertenece el usuario.
-
-**Response `200`:** Array de `{ idGrupo, nombre, codigo, descripcion }`.
+Obtiene la lista de grupos a los que está unido el usuario.
 
 ---
 
 #### `GET /:idGrupo/miembros`
 
-Miembros del grupo con su rendimiento semanal acumulado (desde el lunes).
-
-**Response `200`:**
-```json
-[
-  {
-    "idUsuario": 1,
-    "nombre": "Juan",
-    "nombreUsuario": "juan123",
-    "distancia": 12.5,
-    "pasos": 10000,
-    "calorias": 800,
-    "tiempo": 3600
-  }
-]
-```
+Obtiene la lista de integrantes del grupo con sus métricas acumuladas durante la semana actual.
 
 ---
 
 #### `GET /:idGrupo/ranking`
 
-Miembros del grupo ordenados por distancia semanal descendente.
-
-**Response `200`:**
-```json
-{
-  "miembros": [
-    { "idUsuario": 2, "nombre": "Ana", "distancia": 20.0, ... },
-    { "idUsuario": 1, "nombre": "Juan", "distancia": 12.5, ... }
-  ]
-}
-```
-
-#### `DELETE /:idGrupo/miembros/:idUsuario`
-
-Elimina la relación del usuario con el grupo. Se utiliza para que un usuario salga de un grupo.
-
-**Response:** `204` (sin cuerpo)
+Obtiene la tabla de clasificación del grupo ordenada descendentemente por distancia acumulada en la semana.
 
 ---
 
@@ -696,9 +882,9 @@ Elimina la relación del usuario con el grupo. Se utiliza para que un usuario sa
 
 #### `GET /usuario/:idUsuario`
 
-Obtiene las notificaciones del usuario ordenadas por fecha descendente.
+Obtiene las notificaciones generadas por el sistema.
 
-**Response `200`:**
+**Respuesta `200 OK`:**
 ```json
 [
   {
@@ -706,144 +892,102 @@ Obtiene las notificaciones del usuario ordenadas por fecha descendente.
     "idUsuario": 1,
     "idMetas": 10,
     "mensaje": "¡Felicidades! Has completado tu meta diaria de Distancia (5).",
-    "fechaCreacion": "2026-06-27T15:30:00.000Z",
+    "fechaCreacion": "2026-07-23T02:30:00.000Z",
     "leidaMovil": false,
     "leidaSmartwatch": false
   }
 ]
 ```
 
-Las notificaciones se generan automáticamente durante el `PUT /entrenamientos/finalizar` cuando se completa una meta.
-
 ---
 
 #### `PUT /:id/leer-movil`
 
-Marca una notificación como leída en el dispositivo móvil.
-
-**Response:** `200` (sin cuerpo)
+Marca la notificación como leída desde la App Móvil (`200 OK`).
 
 ---
 
 #### `PUT /:id/leer-wear`
 
-Marca una notificación como leída en el smartwatch.
-
-**Response:** `200` (sin cuerpo)
+Marca la notificación como leída desde el Smartwatch Wear OS (`200 OK`).
 
 ---
 
-## Flujo de registro de un entrenamiento
+## Flujos del sistema
 
-### Desde el smartwatch (Wear OS)
+### Flujo de vinculación de dispositivos (Android TV y Wear OS)
 
 ```
-Usuario                    WearEntrenamientoViewModel          Backend
-  │                              │                              │
-  │  [INICIAR]                   │                              │
-  │ ───────────────────────────► │                              │
-  │                              │  POST /entrenamientos/iniciar│
-  │                              │ ────────────────────────────►│
-  │                              │  INSERT entrenamiento        │
-  │                              │  (pasos=0, calorias=0, ...)  │
-  │                              │ ◄─── { idEntrenamiento: 5 }  │
-  │                              │                              │
-  │  (corre, Health Services)    │                              │
-  │                              │                              │
-  │  [FINALIZAR]                 │                              │
-  │ ───────────────────────────► │                              │
-  │                              │  PUT /entrenamientos/finalizar│
-  │                              │ ────────────────────────────►│
-  │                              │  BEGIN                        │
-  │                              │  1. UPDATE entrenamiento     │
-  │                              │     SET pasos, calorias, ... │
-  │                              │  2. Para cada meta activa:   │
-  │                              │     UPDATE metas SET         │
-  │                              │     valor_actual += incremento│
-  │                              │  3. Si meta completada:      │
-  │                              │     INSERT notificacion     │
-  │                              │  COMMIT                      │
-  │                              │ ◄─── { idEntrenamiento: 5 } │
-  │                              │                              │
-  │  ◄─── navega a Inicio ───── │                              │
+Android TV                              Backend                              App Móvil
+    │                                      │                                     │
+    │  1. POST /solicitar-vinculacion     │                                     │
+    │ ───────────────────────────────────► │                                     │
+    │ ◄─────────────────────────────────── │                                     │
+    │   { codigo: "A7X3K9", secreto }      │                                     │
+    │                                      │                                     │
+    │  2. Muestra código en pantalla       │    3. Usuario ingresa "A7X3K9"       │
+    │                                      │ ◄────────────────────────────────── │
+    │  4. Polling POST /estado-vinculacion │       POST /api/dispositivos/vincular│
+    │ ───────────────────────────────────► │       (con JWT de Usuario)          │
+    │                                      │ ──────────────────────────────────► │
+    │ ◄─────────────────────────────────── │   UPDATE dispositivo                │
+    │   { estado: "vinculado", token:JWT } │   SET vinculado=TRUE, id_usuario=1  │
+    │                                      │                                     │
 ```
-
-### Puntos clave
-
-1. **`POST /iniciar`** crea el registro con valores en cero y devuelve el `idEntrenamiento`.
-2. Durante la actividad, las métricas solo existen en memoria del ViewModel (no se envían incrementales al backend).
-3. **`PUT /finalizar`** envía los valores finales acumulados en una sola petición.
-4. El smartwatch envía `coordenadas = []` y puntos de inicio/fin en (0,0) porque el seguimiento GPS se delega al teléfono.
-5. Las metas se actualizan **del lado del backend** dentro de la misma transacción de finalización, sumando los valores del entrenamiento al `valor_actual` de cada meta.
-6. Si al actualizar una meta se alcanza o supera el objetivo, se genera automáticamente una notificación de logro.
 
 ---
 
-## Script de prueba
+### Flujo de registro y finalización de entrenamiento
 
-**Archivo:** `src/api_test.js`
-
-Ejecuta el flujo completo de integración:
-1. Health check (`GET /api/status`)
-2. Registro de usuario (`POST /api/auth/register`)
-3. Inicio de sesión (`POST /api/auth/login`)
-4. Consulta de perfil (`GET /api/usuarios/:id`)
-5. Creación de meta (`POST /api/metas`)
-6. Listado de metas (`GET /api/metas/usuario/:id`)
-7. Inicio de entrenamiento (`POST /api/entrenamientos/iniciar`)
-8. Finalización con datos que disparan meta completada (`PUT /api/entrenamientos/finalizar`)
-9. Verificación de meta actualizada (`GET /api/metas/usuario/:id`)
-10. Verificación de notificación creada (`GET /api/notificaciones/usuario/:id`)
-11. Dashboard semanal (`GET /api/entrenamientos/semana/:id`)
-
-Ejecutar con: `node src/api_test.js`
+```
+Smartwatch / App Móvil                     Backend                             MQTT Broker
+        │                                     │                                     │
+        │  1. POST /entrenamientos/iniciar    │                                     │
+        │ ──────────────────────────────────► │                                     │
+        │ ◄────────────────────────────────── │  2. Evento MQTT publicado           │
+        │   { idEntrenamiento: 5 }            │ ──────────────────────────────────► │
+        │                                     │     Topic: .../iniciado             │
+        │                                     │                                     │
+        │  (Registro en tiempo real local)    │                                     │
+        │                                     │                                     │
+        │  3. PUT /entrenamientos/finalizar   │                                     │
+        │ ──────────────────────────────────► │                                     │
+        │                                     │  4. Transacción SQL (BEGIN)         │
+        │                                     │     - UPDATE entrenamiento          │
+        │                                     │     - UPDATE metas (progreso)       │
+        │                                     │     - INSERT notificacion (si logra)│
+        │                                     │     (COMMIT)                        │
+        │                                     │                                     │
+        │ ◄────────────────────────────────── │  5. Publica eventos MQTT            │
+        │   { idEntrenamiento: 5, ... }       │ ──────────────────────────────────► │
+        │                                     │     Topic: .../finalizado           │
+        │                                     │     Topic: .../metas/completada     │
+```
 
 ---
 
 ## Manejo de errores
 
-### Formato de error
-
-Todos los errores siguen el mismo formato:
+### Formato de respuesta de error
 
 ```json
 {
-  "error": "Mensaje descriptivo del error"
+  "error": "Descripción legible del error"
 }
 ```
 
-### Códigos de estado
+### Códigos de estado HTTP
 
-| Código | Significado | Causas comunes |
+| Código | Significado | Ejemplos |
 |---|---|---|
-| `201` | Creado | Inicio de entrenamiento, creación de meta/grupo |
-| `200` | Éxito | Finalización, consultas, actualizaciones |
-| `204` | Sin contenido | Eliminación de meta |
-| `400` | Bad Request | Faltan campos obligatorios, ID inválido, meta duplicada |
-| `401` | Unauthorized | Credenciales incorrectas |
-| `404` | Not Found | Recurso no encontrado (usuario, grupo, entrenamiento, código) |
-| `500` | Internal Server Error | Error en base de datos o excepción no manejada |
-
-### Errores de base de datos
-
-- Los errores de clave duplicada (código PostgreSQL `23505`) se manejan explícitamente en la creación de grupos (reintento con nuevo código hasta 5 intentos).
-- Las transacciones en `PUT /finalizar` usan `BEGIN`/`COMMIT`/`ROLLBACK` para garantizar atomicidad.
-- Todos los errores se registran con `console.error(...)` antes de responder.
-
-### Error global no capturado
-
-```javascript
-app.use((err, req, res, next) => {
-  console.error('Error global:', err.stack);
-  res.status(500).json({ error: 'Algo salio mal en el servidor' });
-});
-```
-
-### Autenticación
-
-- Las contraseñas se almacenan hasheadas con **bcryptjs** (salt rounds = 10).
-- El "token" devuelto en login es un string con formato `token_simulado_{idUsuario}_{timestamp}`.
-- **No existe middleware de verificación de tokens** — ninguna ruta valida el token en requests subsecuentes.
+| `200` | OK | Petición exitosa, consultas y actualizaciones. |
+| `201` | Created | Recursos creados (Usuario, Entrenamiento, Meta, Grupo, Vinculación). |
+| `204` | No Content | Eliminación exitosa o validación de sesión activa. |
+| `400` | Bad Request | Parámetros obligatorios faltantes o valores fuera de rango. |
+| `401` | Unauthorized | Credenciales/Tokens inválidos o caducados. |
+| `403` | Forbidden | Tipo de token incorrecto (ej. se requiere token de dispositivo). |
+| `404` | Not Found | Recurso no encontrado (Usuario, Grupo, Ruta, Entrenamiento). |
+| `500` | Internal Server Error | Error en base de datos PostgreSQL o excepciones no capturadas. |
 
 ---
 
@@ -851,8 +995,7 @@ app.use((err, req, res, next) => {
 
 ### Módulo de Contenido de TV (Visualización de Videos de Running)
 
-El módulo de Smart TV cuenta con una sección de **Contenido** para la visualización de videos recomendados sobre running. Cabe destacar que:
+El módulo de Smart TV cuenta con una sección de **Contenido** para la visualización de videos recomendados sobre running:
 1. **Consumo Descentralizado:** Este módulo no consume endpoints del backend de Ruta Libre para obtener los metadatos o reproducir los videos.
 2. **Conexión Directa:** El cliente de Smart TV consume de manera directa la **API v3 de YouTube** utilizando peticiones HTTP remotas mediante Retrofit (`https://www.googleapis.com/youtube/v3/search`).
-3. **Resiliencia local:** Si la API de YouTube falla por red, excede su cuota, o no hay una clave API configurada, el cliente de Smart TV cuenta con resiliencia local inmediata. Implementa timeouts explícitos de 5 segundos y realiza un fallback automático a una lista estática simulada de videos (`obtenerVideosSimulados`), capturando excepciones a nivel global de la corrutina (`Throwable`) para evitar cargas infinitas. Por lo tanto, el servidor de Node.js no procesa, almacena, ni intermedia la entrega de este contenido, optimizando la capacidad del backend.
-
+3. **Resiliencia Local:** Si la API de YouTube falla por red, excede su cuota o no hay una clave API configurada, el cliente de Smart TV cuenta con resiliencia local inmediata. Implementa timeouts explícitos de 5 segundos y realiza un fallback automático a una lista estática simulada de videos (`obtenerVideosSimulados`), evitando cargas infinitas o bloqueos.

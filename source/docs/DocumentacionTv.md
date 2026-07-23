@@ -1,191 +1,233 @@
 # Documentación Técnica — Módulo Smart TV (Ruta Libre)
 
-Este documento detalla la arquitectura, el diseño de la interfaz de usuario y el funcionamiento técnico del módulo de **Smart TV (Android TV)** en la aplicación Ruta Libre.
+Este documento detalla la arquitectura, el diseño de la interfaz de usuario, el consumo de servicios web/REST, la sincronización en tiempo real vía MQTT y el funcionamiento técnico del módulo de **Smart TV (Android TV)** en la aplicación Ruta Libre.
 
 ---
 
 ## Índice
 
 1. [Descripción General](#descripción-general)
-2. [Tecnologías](#tecnologías)
+2. [Tecnologías y Dependencias](#tecnologías-y-dependencias)
 3. [Estructura del Módulo TV](#estructura-del-módulo-tv)
-4. [Componentes Clave](#componentes-clave)
-   - [Navegación Lateral (BarraLateralTv)](#navegación-lateral-barralateraltv)
-   - [Pantalla de Estadísticas (DashboardScreen)](#pantalla-de-estadísticas-dashboardscreen)
-   - [Gráfica de Rendimiento Canvas](#gráfica-de-rendimiento-canvas)
-   - [Pantalla de Videos y Reproductor de YouTube (VideosScreen)](#pantalla-de-videos-y-reproductor-de-youtube-videosscreen)
-5. [Flujo de Datos y Conexión con el Backend](#flujo-de-datos-y-conexión-con-el-backend)
-6. [Foco e Interacción con D-pad](#foco-e-interacción-con-d-pad)
+4. [Módulos y Componentes Clave](#módulos-y-componentes-clave)
+   - [Flujo de Vinculación y Autenticación de Dispositivo (VinculacionTvScreen)](#flujo-de-vinculación-y-autenticación-de-dispositivo-vinculaciontvscreen)
+   - [Navegación Lateral Dinámica (BarraLateralTv)](#navegación-lateral-dinámica-barralateraltv)
+   - [Panel de Control y Estadísticas (DashboardScreen)](#panel-de-control-y-estadísticas-dashboardscreen)
+   - [Gráfica de Rendimiento Multi-métrica Nativa (Canvas)](#gráfica-de-rendimiento-multi-métrica-nativa-canvas)
+   - [Comunidad y Rankings Grupales (GruposTvScreen)](#comunidad-y-rankings-grupales-grupostvscreen)
+   - [Centro Multimedia y Reproductor de YouTube (VideosScreen & ReproductorVideoActivity)](#centro-multimedia-y-reproductor-de-youtube-videosscreen--reproductorvideoactivity)
+5. [Endpoints Consultados y Servicios Consumidos](#endpoints-consultados-y-servicios-consumidos)
+   - [Endpoints de Autenticación y Dispositivos (Backend REST)](#endpoints-de-autenticación-y-dispositivos-backend-rest)
+   - [Endpoints de Estadísticas y Rendimiento (Backend REST)](#endpoints-de-estadísticas-y-rendimiento-backend-rest)
+   - [Endpoints de Grupos y Rankings (Backend REST)](#endpoints-de-grupos-y-rankings-backend-rest)
+   - [API Externa de YouTube v3](#api-externa-de-youtube-v3)
+6. [Sincronización en Tiempo Real y Cierre de Sesión Remoto (MQTT)](#sincronización-en-tiempo-real-y-cierre-de-sesión-remoto-mqtt)
+7. [Foco e Interacción con D-pad (Smart TV UX)](#foco-e-interacción-con-d-pad-smart-tv-ux)
 
 ---
 
 ## Descripción General
 
-El módulo de Smart TV funciona como un centro de análisis de rendimiento físico e histórico para el usuario. Ofrece visualizaciones detalladas y comparativas a nivel semanal y mensual del entrenamiento de running, implementando una interfaz de usuario premium diseñada específicamente para pantallas grandes y control remoto.
+El módulo de Smart TV para Ruta Libre proporciona un centro integral de análisis de rendimiento deportivo, interacción comunitaria y consumo multimedia optimizado para pantallas de gran formato y navegación mediante control remoto (D-pad).
+
+Permite a los usuarios:
+- Vincular la Smart TV de forma rápida mediante un código único de 6 caracteres conectado con la app móvil.
+- Visualizar métricas avanzadas e históricas de running (distancia, pasos, calorías, tiempo) en periodos semanales y mensuales.
+- Consultar tendencias y comparativas de progreso respecto a periodos anteriores.
+- Explorar sus grupos de entrenamiento, unirse mediante códigos de invitación, crear nuevos grupos y visualizar la tabla de clasificación (ranking) de miembros.
+- Acceder a recomendaciones multimedia de running mediante la API de YouTube v3 con reproductor integrado.
+- Recibir órdenes de desvinculación o cierre de sesión remoto de manera reactiva e instantánea mediante subscripción a tópicos MQTT.
 
 ---
 
-## Tecnologías
+## Tecnologías y Dependencias
 
-| Componente | Tecnología | Versión |
+| Componente / Capa | Tecnología | Descripción / Versión |
 |---|---|---|
 | Runtime / UI | Jetpack Compose para TV | `1.0.0-alpha07` |
-| UI Components | Leanback / TV Material 3 | `1.0.0-alpha07` |
-| Arquitectura | MVVM (Model-View-ViewModel) | Modern Android Architecture |
-| Consumo API | Retrofit + Coroutines | 2.11.x |
-| Inyección local | Gradle Project Dependency | `:core` (módulo compartido) |
+| Componentes Material | TV Material 3 / Leanback | `1.0.0-alpha07` |
+| Arquitectura | MVVM (Model-View-ViewModel) | Modern Android Architecture con Kotlin Coroutines y StateFlow |
+| Navegación | Jetpack Navigation Compose | Ruta unificada mediante `TvNavGraph` |
+| Consumo API REST | Retrofit + OkHttpClient | Retrofit 2.11.x, OkHttpClient con convertidor Gson |
+| Mensajería en Tiempo Real | Eclipse Paho MQTT Client | Conexión WebSocket/TCP mediante módulo compartido `:core` (`MqttSubscriber`) |
+| Persistencia Local | SharedPreferences + JSON Parsing | `TvIdentityStore` almacena credenciales de dispositivo y JWT |
+| Gráficos Personalizados | Jetpack Compose `Canvas` | Renderizado nativo multi-métrica sin dependencias de terceros |
+| Dependencia Interna | Módulo compartido `:core` | `mx.utng.cala.core` (repositorios, DTOs, MQTT) |
 
 ---
 
 ## Estructura del Módulo TV
 
-El código fuente del módulo de TV está estructurado bajo la siguiente jerarquía de paquetes:
-
 ```
 tv/src/main/java/mx/utng/cala/tv/
-├── MainActivityTv.kt            # Punto de entrada de la app en TV, configura el NavGraph
+├── MainActivityTv.kt            # Punto de entrada, inicialización de MQTT subscriber y estado de sesión
 ├── data/
+│   ├── TvIdentityStore.kt       # Gestión local de credenciales (idUsuario, idDispositivo, token JWT)
 │   ├── model/
-│   │   └── ModelosYouTube.kt    # Modelos para mapear las respuestas de la API de YouTube y de UI
+│   │   └── ModelosYouTube.kt    # Data classes para respuesta de API YouTube v3 y estado UI
 │   ├── remote/
-│   │   ├── ConfiguracionYouTube.kt # Contiene la Clave API y URL base para Retrofit
-│   │   └── ServicioApiYouTube.kt   # Interfaz de endpoints HTTP de YouTube con Retrofit
+│   │   ├── ConfiguracionYouTube.kt # Configuración de API Key y URL base de YouTube
+│   │   └── ServicioApiYouTube.kt   # Interfaz Retrofit para llamadas a YouTube Data API
 │   └── repository/
-│       └── RepositorioYouTube.kt # Repositorio de consulta con fallback automático a datos mock
+│       └── RepositorioYouTube.kt # Repositorio con estrategia de fallback automático a datos mock
 └── ui/
     ├── components/
-    │   └── BarraLateralTv.kt    # Menú de navegación lateral adaptado a TV
+    │   └── BarraLateralTv.kt    # Menú lateral animado, colapsable y superpuesto sin comprimir contenido
     ├── navigation/
-    │   └── TvNavGraph.kt        # Definición de rutas y destinos (Dashboard, Grupos, Videos)
+    │   └── TvNavGraph.kt        # Definición de rutas y navegación (vinculacion, dashboard, grupos, videos)
     ├── screens/
     │   ├── dashboard/
-    │   │   └── DashboardScreen.kt # Pantalla principal con estadísticas y gráficas
+    │   │   └── DashboardScreen.kt # Vista principal con tarjetas acumuladoras, gráficas y comparativas
     │   ├── grupos/
-    │   │   └── GruposTvScreen.kt  # Pantalla de comparación grupal y rankings
-    │   └── videos/
-    │       └── VideosScreen.kt    # Pantalla multimedia de videos recomendados y reproductor
+    │   │   └── GruposTvScreen.kt  # Vista de grupos, creación, código de invitación y ranking de miembros
+    │   ├── videos/
+    │   │   ├── ReproductorVideoActivity.kt # Activity dedicada para reproducción YouTube en pantalla completa
+    │   │   └── VideosScreen.kt    # Buscador, filtros por categoría/nivel y lista de videos
+    │   └── vinculacion/
+    │       └── VinculacionTvScreen.kt # Pantalla de emparejamiento con código de 6 caracteres
     ├── theme/
-    │   ├── Color.kt             # Colores de la marca y de las métricas de salud
+    │   ├── Color.kt             # Paleta de colores de marca y métricas de rendimiento
     │   ├── Theme.kt             # Configuración del tema oscuro de Ruta Libre
     │   └── Type.kt              # Tipografías oficiales
     └── viewmodel/
-        ├── DashboardViewModel.kt # Lógica de carga y alternancia de periodos
-        ├── GrupoTvViewModel.kt  # Lógica de carga de rankings grupales
-        └── ViewModelVideos.kt    # Lógica de carga y filtros de la sección de videos
+        ├── DashboardViewModel.kt # Carga reactiva de estadísticas y alternancia semanal/mensual
+        ├── GrupoTvViewModel.kt  # Gestión concurrente de grupos, miembros y rankings
+        ├── TvPairingViewModel.kt# Lógica de solicitud de código, polling y validación de sesión
+        └── ViewModelVideos.kt    # Debounce de búsqueda, filtros por categoría y carga de videos
 ```
 
 ---
 
-## Componentes Clave
+## Módulos y Componentes Clave
 
-### Navegación Lateral (BarraLateralTv)
-
-Ubicada en la parte izquierda de la interfaz, emula el menú del mockup. Contiene:
-- Logo "Ruta Libre" con el icono verde del corredor.
-- Tres opciones: **Dashboard**, **Grupos** y **Contenido**.
-- Soporte para cambios dinámicos de foco con estados visuales claros (cambio de escala a `1.04f` y tintes verdes en foco).
-
----
-
-### Pantalla de Estadísticas (DashboardScreen)
-
-La pantalla principal se divide en dos áreas principales:
-1. **Fila de Métricas Acumuladoras (Superior):**
-   - Muestra tarjetas para **Distancia total**, **Pasos totales**, **Calorías totales** y **Tiempo total**.
-   - Cada tarjeta contiene el icono representativo coloreado, la sumatoria calculada y un indicador de porcentaje de cambio en verde (mejora) o rojo (disminución) respecto al periodo anterior.
-2. **Sección Inferior Dividida:**
-   - **Gráfico de Rendimiento (Izquierda):** Gráfica de barras y líneas multi-métrica personalizada.
-   - **Comparación con Periodo Anterior (Derecha Superior):** Muestra barras de progreso horizontales que ilustran proporcionalmente el avance o retroceso de cada métrica.
-   - **Tendencia General (Derecha Inferior):** Muestra una síntesis motivacional dinámica y el sentido general de la tendencia física del usuario.
+### Flujo de Vinculación y Autenticación de Dispositivo (VinculacionTvScreen)
+- **Generación de Código:** Al iniciar la app sin sesión previa, `TvPairingViewModel` solicita un código temporal de 6 caracteres al backend (`solicitarTv`), mostrando una interfaz limpia en `VinculacionTvScreen`.
+- **Polling de Estado:** La TV inicia una corrutina en segundo plano (`esperarAutorizacion`) que consulta periódicamente (`delay(2500ms)`) el estado de la solicitud.
+- **Enlace Exitoso:** Cuando el usuario ingresa el código en su aplicación móvil, la TV recibe la respuesta `"vinculado"` junto con el `idUsuario` y el `token` JWT de sesión, guardándolos de forma persistente mediante `TvIdentityStore` e ingresando automáticamente al Dashboard.
+- **Verificación Continua de Sesión:** `TvPairingViewModel` valida periódicamente la validez del token guardado contra el backend (`validarSesionDispositivo`). Si recibe un código HTTP `401` o `403`, invalida la sesión local y redirige al flujo de vinculación.
 
 ---
 
-### Gráfica de Rendimiento Canvas
-
-Debido a que no se utilizan librerías pesadas de terceros, la gráfica de barras y líneas está implementada de forma nativa a través del componente `Canvas` de Jetpack Compose:
-- **Barras simultáneas:** Por cada día (o semana), dibuja tres barras delgadas contiguas: verde (`Distancia`), azul (`Pasos`) y naranja (`Calorías`), escaladas automáticamente sobre el valor máximo de la colección de datos.
-- **Línea de tendencia:** Traza una línea de trayectoria continua (`Path`) de color azul que une los puntos superiores de pasos de cada día, rematada con círculos concéntricos en cada nodo de la gráfica.
-- **Cuadrícula y Ejes:** Genera líneas horizontales de rejilla y las etiquetas del eje X con el día de la semana o número de semana actual.
-
----
-
-### Pantalla de Videos y Reproductor de YouTube (VideosScreen)
-
-Esta pantalla ofrece al usuario acceso a contenido multimedia sobre running desde su Smart TV utilizando la API de YouTube. Está estructurada bajo tres estados visuales o vistas internas:
-- **Vista Principal (`VistaVideosTv.PRINCIPAL`):** Presenta una cabecera con el buscador de texto (`OutlinedTextField`) diseñado para control remoto y una barra de filtros de categorías con iconos representativos (Videos/Todos, Consejos, Carreras, Tips). Debajo se visualiza el listado vertical de videos recomendados (`LazyColumn`) mediante tarjetas adaptadas a TV (`TarjetaVideoListado`).
-- **Vista de Filtros Detallados (`VistaVideosTv.FILTROS`):** Muestra el listado de videos bajo una categoría filtrada, un botón de retroceso superior y una barra horizontal de subfiltros por nivel físico de entrenamiento (Todos, Principiantes, Intermedios, Avanzados). En esta vista, el usuario puede marcar/guardar videos mediante un indicador en forma de marcador (`Bookmark`).
-- **Vista de Detalle (`VistaVideosTv.DETALLE`):** Despliega el reproductor de video en pantalla completa con un botón para regresar.
-
-#### Reproductor Integrado (`ReproductorYouTube`)
-La reproducción de videos se realiza mediante un componente `WebView` incrustado en Compose con `AndroidView` que ejecuta de forma asíncrona la **IFrame Player API** de YouTube:
-- Habilita la ejecución de JavaScript, almacenamiento DOM y escala para abarcar la pantalla completa.
-- Carga código HTML dinámico inyectando el ID del video y parámetros de reproducción (`autoplay=1`, `controls=1`, `playsinline=1`, `modestbranding=1`, etc.).
-- Comienza la reproducción de forma automática cuando el reproductor se inicializa (`onPlayerReady`).
-- Cuenta con soporte de foco de control remoto (`D-pad`) en el contenedor del reproductor.
+### Navegación Lateral Dinámica (BarraLateralTv)
+- **Diseño Colapsable Animado:** Permanece compacta (72dp) mostrando únicamente los iconos principales. Al recibir el foco de navegación del D-pad (`onFocusChanged`), se expande de forma fluida a 260dp mediante `animateDpAsState`.
+- **Superposición sin Desplazamiento (`zIndex`):** Se renderiza en una capa superior (`zIndex(10f)`) manteniendo un espacio reservado compacto, evitando comprimir o re-renderizar las tarjetas del Dashboard al abrirse o cerrarse.
+- **Opciones de Menú:**
+  1. **Dashboard** (`TvRoutes.DASHBOARD`)
+  2. **Grupos** (`TvRoutes.GRUPOS`)
+  3. **Contenido** (`TvRoutes.VIDEOS`)
+  4. **Cerrar sesión** (Ejecuta la invalidación del token y revocación del dispositivo).
 
 ---
 
-## Flujo de Datos y Conexión con el Backend
+### Panel de Control y Estadísticas (DashboardScreen)
+- **Alternancia de Periodos (Semanal / Mensual):** El usuario puede conmutar entre vista semanal y mensual en tiempo real. `DashboardViewModel` actualiza el estado y realiza peticiones paralelas al repositorio.
+- **Tarjetas Acumuladoras:** Muestra distancia total (km), pasos totales, calorías (kcal) y tiempo (min/hrs), incluyendo indicadores de porcentaje de cambio en color verde (mejora) o rojo (disminución) respecto al periodo equivalente anterior.
+- **Tarjeta Comparativa y Tendencia:** Presenta barras de avance proporcional e indicadores visuales de tendencia motivacional de entrenamiento.
 
-El flujo de datos para cargar las estadísticas sigue la arquitectura recomendada de Android:
+---
+
+### Gráfica de Rendimiento Multi-métrica Nativa (Canvas)
+- Renderizada de forma nativa con Jetpack Compose `Canvas` para optimizar el rendimiento en procesadores de Smart TV.
+- **Barras Multi-métrica Simultáneas:** Renderiza por cada periodo tres barras contiguas (distancia en verde, pasos en azul y calorías en naranja), escaladas dinámicamente según los valores máximos.
+- **Línea de Trayectoria Continuo (Path):** Traza una línea suave uniendo los puntos de pasos diarios/semanales, rematada con nodos en círculos concéntricos.
+
+---
+
+### Comunidad y Rankings Grupales (GruposTvScreen)
+- **Gestión de Grupos:** Permite al usuario visualizar los grupos en los que participa, unirse a un grupo mediante su código único de invitación y crear nuevos grupos desde la TV.
+- **Carga Concurrente (Async / Await):** Al seleccionar un grupo, `GrupoTvViewModel` dispara consultas paralelas para obtener la lista de miembros (`getMiembros`) y la tabla de clasificación o ranking (`getRanking`).
+- **Tabla de Posiciones (Ranking):** Muestra el medallero e icono de podio (oro, plata, bronce) con la distancia recorrida y pasos acumulados por cada integrante del grupo.
+- **Salida de Grupo:** Incluye la opción para abandonar un grupo con actualización inmediata de la UI.
+
+---
+
+### Centro Multimedia y Reproductor de YouTube (VideosScreen & ReproductorVideoActivity)
+- **Buscador con Debounce:** Cuadro de texto `OutlinedTextField` adaptado a control remoto que aplica una pausa prudencial de 400ms antes de emitir la consulta HTTP, evitando saturar la API con cada pulsación.
+- **Filtros por Categoría y Nivel:** Categorías (Videos, Consejos, Carreras, Tips) y subfiltros técnicos (Todos, Principiantes, Intermedios, Avanzados).
+- **Reproducción Integrada (`ReproductorVideoActivity`):** Al presionar un video, se abre una Activity landscape en pantalla completa configurada con `WebView` y YouTube IFrame Player API. Habilita aceleración por hardware, soporte para JavaScript, inicio automático (`autoplay=1`) y control mediante D-pad.
+- **Resiliencia y Fallback Locales:** Si no existe una clave de API configurada en `ConfiguracionYouTube`, o ante fallos de red/cuota, `RepositorioYouTube` intercepta el error y entrega un listado estático filtrado de videos simulados referentes a running con IDs reales de YouTube.
+
+---
+
+## Endpoints Consultados y Servicios Consumidos
+
+### Endpoints de Autenticación y Dispositivos (Backend REST)
+
+| Método | Endpoint | ViewModel / Componente | Descripción |
+|---|---|---|---|
+| `POST` | `/api/dispositivos/solicitar-tv` | `TvPairingViewModel` | Solicita un nuevo código de 6 dígitos para emparejar la Smart TV. |
+| `GET` | `/api/dispositivos/estado` | `TvPairingViewModel` | Consulta el estado del proceso de vinculación (`pendiente`, `vinculado`, `expirado`). |
+| `GET` | `/api/dispositivos/validar` | `TvPairingViewModel` | Valida la vigencia de la sesión y token guardados en el almacenamiento local de la TV. |
+| `POST` | `/api/dispositivos/logout` | `TvPairingViewModel` | Cierra la sesión del dispositivo y revoca el token en el backend. |
+
+---
+
+### Endpoints de Estadísticas y Rendimiento (Backend REST)
+
+| Método | Endpoint | ViewModel / Componente | Descripción |
+|---|---|---|---|
+| `GET` | `/api/entrenamientos/semana?idUsuario={id}` | `DashboardViewModel` | Obtiene métricas acumuladas y desglose diario de la semana actual. |
+| `GET` | `/api/entrenamientos/comparacion?idUsuario={id}` | `DashboardViewModel` | Obtiene porcentaje de cambio y deltas respecto a la semana previa. |
+| `GET` | `/api/entrenamientos/mes?idUsuario={id}` | `DashboardViewModel` | Obtiene métricas acumuladas y desglose por semanas del mes actual. |
+| `GET` | `/api/entrenamientos/comparacion-mes?idUsuario={id}` | `DashboardViewModel` | Obtiene porcentaje de cambio y deltas respecto al mes previo. |
+
+---
+
+### Endpoints de Grupos y Rankings (Backend REST)
+
+| Método | Endpoint | ViewModel / Componente | Descripción |
+|---|---|---|---|
+| `GET` | `/api/grupos/usuario/{idUsuario}` | `GrupoTvViewModel` | Obtiene la lista de grupos a los que pertenece el usuario. |
+| `POST` | `/api/grupos/crear` | `GrupoTvViewModel` | Crea un nuevo grupo de entrenamiento indicando nombre y descripción. |
+| `POST` | `/api/grupos/unirse` | `GrupoTvViewModel` | Une al usuario a un grupo mediante su código de invitación. |
+| `GET` | `/api/grupos/{idGrupo}/miembros` | `GrupoTvViewModel` | Retorna los miembros registrados en el grupo especificado. |
+| `GET` | `/api/grupos/{idGrupo}/ranking` | `GrupoTvViewModel` | Retorna la tabla de clasificación ordenada por kilometraje del grupo. |
+| `DELETE` | `/api/grupos/{idGrupo}/salir` | `GrupoTvViewModel` | Elimina la pertenencia del usuario al grupo. |
+
+---
+
+### API Externa de YouTube v3
+
+| Método | Endpoint / Servicio | Repositorio / ViewModel | Descripción |
+|---|---|---|---|
+| `GET` | `https://www.googleapis.com/youtube/v3/search` | `RepositorioYouTube` / `ServicioApiYouTube` | Realiza búsquedas de contenidos de running con parámetros `q`, `type=video`, `maxResults=15` y `key`. |
+
+---
+
+## Sincronización en Tiempo Real y Cierre de Sesión Remoto (MQTT)
+
+La Smart TV integra el cliente MQTT a través del módulo compartido `:core` (`MqttSubscriber`), ofreciendo reactividad instantánea ante acciones del usuario en la app móvil.
 
 ```
-[Backend REST API]
-       ▲  (Endpoints /semana, /mes, /comparacion, /comparacion-mes)
-       │
-[ApiService.kt (Retrofit)]
-       ▲
-[EntrenamientoRepository.kt]  <-- Módulo :core compartido
-       ▲
-[DashboardViewModel.kt]
-       │  (Expone EstadoUiDashboard como StateFlow)
-       ▼
-[DashboardScreen.kt (UI Compose)]
+                  [ Servidor Broker MQTT ]
+                             │
+     Tópicos: /sesion/cerrada | /dispositivos/{idDispositivo}/desvinculado
+                             │
+                             ▼
+                    [ MqttSubscriber ] (MainActivityTv)
+                             │
+                             ▼
+                    [ TvIdentityStore.clear() ]
+                             │
+                             ▼
+               [ Redirección a VinculacionTvScreen ]
 ```
 
-### Alternancia de Periodos (Semanal / Mensual)
-El usuario puede cambiar el periodo del Dashboard usando los botones "Semanal" y "Mensual" de la cabecera. Al cambiar:
-1. `DashboardViewModel` actualiza `periodoSeleccionado`.
-2. Ejecuta en paralelo las peticiones del repositorio correspondientes al nuevo periodo (ej. `obtenerDashboardMensual` y `obtenerComparacionMensual`).
-3. El `EstadoUiDashboard` se actualiza de forma reactiva y el `DashboardScreen` re-dibuja las métricas y la gráfica con transiciones fluidas.
+1. **Suscripción Automática:** Al vincular la sesión o reiniciar la app con un usuario activo (`idUsuario`), `MainActivityTv` conecta el suscriptor MQTT.
+2. **Tópicos Escuchados:**
+   - `ruta-libre/usuarios/{idUsuario}/sesion/cerrada`: Notifica que el usuario cerró sesión en todas sus aplicaciones o dispositivos.
+   - `ruta-libre/usuarios/{idUsuario}/dispositivos/{idDispositivo}/desvinculado`: Notifica que la Smart TV específica fue desvinculada desde el teléfono.
+3. **Respuesta Reactiva:** Al recibir cualquiera de estos eventos, `MainActivityTv`:
+   - Elimina las credenciales locales mediante `identityStore.clear()`.
+   - Desconecta el cliente MQTT.
+   - Dispara `remoteLogoutSignal`, provocando que `TvNavGraph` limpie el stack de navegación y redirija inmediatamente a la pantalla de vinculación (`VinculacionTvScreen`).
 
 ---
 
-### Integración y Flujo de Videos de YouTube (Consumo Directo)
+## Foco e Interacción con D-pad (Smart TV UX)
 
-A diferencia de los históricos y entrenamientos grupales, el contenido de video se obtiene de manera externa. El flujo de datos está diseñado bajo los siguientes lineamientos:
+El módulo de Smart TV cumple rigurosamente con las directrices de experiencia de usuario para Android TV:
+- **Resaltado Visual Claro:** Todos los elementos interactivos utilizan componentes `Surface` de TV Material 3 con estados de foco explícitos (escalado suave de `1.04f` a `1.06f`, cambio de elevación y bordes iluminados en verde primario).
+- **Control de Foco Nativo:** Manejo de navegación direccional (Arriba, Abajo, Izquierda, Derecha, OK/Seleccionar) sin requerir puntero ni pantalla táctil.
+- **Teclado Virtual Optimizado:** Cuadros de texto adaptados para ingresar texto con el control remoto de la televisión de forma ágil.
 
-```
-[YouTube v3 API] (API de Google)
-       ▲
-       │  (Petición HTTP HTTP GET /search)
-       │
-[ServicioApiYouTube.kt (Retrofit)]
-       ▲
-       │  (Inyección dinámica de API Key y Query)
-       │
-[RepositorioYouTube.kt] <─── Fallback automático si falla la API o falta API Key ───> [Datos Mock Locales]
-       ▲
-       │  (Retorna List<VideoRutaLibre>)
-       │
-[ViewModelVideos.kt]
-       │  (Expone EstadoUiVideos como StateFlow)
-       ▼
-[VideosScreen.kt]
-```
-
-1. **Retrofit, GSON y Timeouts:** El `RepositorioYouTube` inicializa de manera perezosa (`lazy`) un cliente Retrofit apuntando a la URL base de YouTube v3, agregando el convertidor `GsonConverterFactory`. Se configura explícitamente un cliente `OkHttpClient` con timeouts de conexión y lectura de **5 segundos** para evitar bloqueos prolongados en condiciones de red restringidas. La interfaz `ServicioApiYouTube` realiza la consulta `search` pasando parámetros como `consulta`, `maxResultados`, `tipo` y `clave`.
-2. **Estrategia de Fallback (Resiliencia):** Si no se define una clave de API válida en `ConfiguracionYouTube.CLAVE_API`, o si ocurre un fallo de red, código de error HTTP (ej. cuota excedida) o cualquier error de inicialización, el repositorio captura la excepción (`Throwable`) de manera segura y consume `obtenerVideosSimulados`. Este método filtra de manera local una lista estática (`listaVideosSimulados`) con IDs reales de YouTube referentes a "running" clasificados por categorías, garantizando el funcionamiento de la aplicación aun sin conectividad o API Key.
-3. **Robustez de Carga en ViewModel:** El `ViewModelVideos` captura de manera preventiva excepciones de tipo `Throwable` (en lugar de `Exception`) en su corrutina `cargarVideos`. Esto previene fallos silenciosos y estados de carga infinitos en la UI si se producen errores graves a nivel de JVM durante el enlace dinámico de bibliotecas de red en el SDK 36.
-4. **Mapeo de Datos:** Los campos nativos de la API de YouTube se transforman al modelo simplificado `VideoRutaLibre`, formateando la fecha ISO original a `"dd MMM yyyy"` con configuración regional en español ("es", "MX").
-5. **Navegación e Interacción de Filtros:** La pantalla principal gestiona la actualización de vistas mediante un `LaunchedEffect` que escucha cambios tanto en `estadoUi.videoSeleccionado` como en `estadoUi.filtroActivo`. De este modo, al interactuar con las categorías desde la barra horizontal con el control remoto, la interfaz transiciona inmediatamente entre la pantalla principal y las vistas de subfiltros detalladas.
-
-
----
-
-## Foco e Interacción con D-pad
-
-En Android TV, todos los elementos interactivos se seleccionan a través del control remoto (D-pad). Se implementaron las siguientes directivas de diseño:
-- Uso de componentes `Surface` interactivos de TV Material 3 que manejan automáticamente los estados de foco, clic y presión del control remoto.
-- Modificadores `.onFocusChanged` para registrar en tiempo real qué tarjeta o botón tiene el foco y cambiar dinámicamente sus bordes, elevación y contrastes.
-- Animación de escala suave al enfocar un componente para dar un efecto premium de profundidad.
