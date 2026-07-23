@@ -591,9 +591,12 @@ fun PantallaCrearGrupoTv(
                     },
                     enabled = nombre.isNotBlank() && !estaCargando,
                     colors = ButtonDefaults.colors(
-                        containerColor = Primary,
-                        contentColor = Color.Black
+                        containerColor = PrimaryContainer,
+                        contentColor = Color.White,
+                        focusedContainerColor = Primary,
+                        focusedContentColor = Color.Black
                     ),
+                    scale = ButtonDefaults.scale(focusedScale = 1.02f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -749,9 +752,12 @@ fun PantallaUnirseGrupoTv(
                     },
                     enabled = codigo.isNotBlank() && !estaCargando,
                     colors = ButtonDefaults.colors(
-                        containerColor = Primary,
-                        contentColor = Color.Black
+                        containerColor = PrimaryContainer,
+                        contentColor = Color.White,
+                        focusedContainerColor = Primary,
+                        focusedContentColor = Color.Black
                     ),
+                    scale = ButtonDefaults.scale(focusedScale = 1.02f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -759,15 +765,6 @@ fun PantallaUnirseGrupoTv(
                         text = "Confirmar y Unirse",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium
-                    )
-                }
-
-                TextButton(onClick = alVolver) {
-                    Text(
-                        text = "Volver",
-                        color = Primary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
                     )
                 }
             }
