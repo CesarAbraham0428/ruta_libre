@@ -14,7 +14,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +57,27 @@ fun GruposTvScreen(
     var grupoSeleccionadoDescripcion by remember { mutableStateOf<String?>(null) }
     var grupoSeleccionadoIdCreador by remember { mutableStateOf<Int?>(null) }
 
+    val solicitadorEnfoquePrincipal = remember { FocusRequester() }
+    val solicitadorEnfoqueCrear = remember { FocusRequester() }
+    val solicitadorEnfoqueUnirse = remember { FocusRequester() }
+    val solicitadorEnfoqueDetalle = remember { FocusRequester() }
+
     LaunchedEffect(Unit) {
         grupoViewModel.cargarGruposDeUsuario(idUsuario)
+    }
+
+    LaunchedEffect(vistaActual) {
+        delay(100)
+        try {
+            when (vistaActual) {
+                VistaGruposTv.PRINCIPAL -> solicitadorEnfoquePrincipal.requestFocus()
+                VistaGruposTv.CREAR -> solicitadorEnfoqueCrear.requestFocus()
+                VistaGruposTv.UNIRSE -> solicitadorEnfoqueUnirse.requestFocus()
+                VistaGruposTv.DETALLE -> solicitadorEnfoqueDetalle.requestFocus()
+            }
+        } catch (e: Exception) {
+            // Ignorar si el elemento enfocado aún no se adjunta
+        }
     }
 
     Row(
@@ -81,6 +103,7 @@ fun GruposTvScreen(
                 VistaGruposTv.PRINCIPAL -> {
                     PantallaPrincipalGruposTv(
                         estadoUi = estadoUi,
+                        solicitadorEnfoque = solicitadorEnfoquePrincipal,
                         alSeleccionarCrear = { vistaActual = VistaGruposTv.CREAR },
                         alSeleccionarUnirse = { vistaActual = VistaGruposTv.UNIRSE },
                         alSeleccionarGrupo = { id, nombre, codigo, descripcion, idCreador ->
@@ -97,6 +120,7 @@ fun GruposTvScreen(
                 VistaGruposTv.CREAR -> {
                     PantallaCrearGrupoTv(
                         estaCargando = estadoUi.estaCargando,
+                        solicitadorEnfoque = solicitadorEnfoqueCrear,
                         alGuardar = { nombre, descripcion ->
                             grupoViewModel.crearNuevoGrupo(nombre, descripcion, idUsuario)
                             vistaActual = VistaGruposTv.PRINCIPAL
@@ -109,6 +133,7 @@ fun GruposTvScreen(
                 VistaGruposTv.UNIRSE -> {
                     PantallaUnirseGrupoTv(
                         estaCargando = estadoUi.estaCargando,
+                        solicitadorEnfoque = solicitadorEnfoqueUnirse,
                         alUnirse = { codigo ->
                             grupoViewModel.unirseAGrupoConCodigo(idUsuario, codigo)
                             vistaActual = VistaGruposTv.PRINCIPAL
@@ -126,6 +151,7 @@ fun GruposTvScreen(
                         codigoGrupo = grupoSeleccionadoCodigo,
                         descripcionGrupo = grupoSeleccionadoDescripcion,
                         estadoUi = estadoUi,
+                        solicitadorEnfoque = solicitadorEnfoqueDetalle,
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->
                                 grupoViewModel.salirDeGrupo(idUsuario, idGrupo) {
@@ -154,6 +180,7 @@ fun GruposTvScreen(
 @Composable
 fun PantallaPrincipalGruposTv(
     estadoUi: EstadoUiGrupoTv,
+    solicitadorEnfoque: FocusRequester,
     alSeleccionarCrear: () -> Unit,
     alSeleccionarUnirse: () -> Unit,
     alSeleccionarGrupo: (Int, String, String, String?, Int?) -> Unit
@@ -182,7 +209,8 @@ fun PantallaPrincipalGruposTv(
                     titulo = "Unirse a un grupo",
                     descripcion = "Unete a un grupo mediante un código de grupo",
                     vectorIcono = Icons.Default.Groups,
-                    alHacerClick = alSeleccionarUnirse
+                    alHacerClick = alSeleccionarUnirse,
+                    modifier = Modifier.focusRequester(solicitadorEnfoque)
                 )
 
                 TarjetaAccionGrupoTv(
@@ -263,13 +291,14 @@ fun TarjetaAccionGrupoTv(
     titulo: String,
     descripcion: String,
     vectorIcono: ImageVector,
-    alHacerClick: () -> Unit
+    alHacerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var tieneFoco by remember { mutableStateOf(false) }
 
     Surface(
         onClick = alHacerClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(110.dp)
             .onFocusChanged { tieneFoco = it.isFocused },
@@ -441,6 +470,7 @@ fun TarjetaGrupoTv(
 @Composable
 fun PantallaCrearGrupoTv(
     estaCargando: Boolean,
+    solicitadorEnfoque: FocusRequester,
     alGuardar: (String, String?) -> Unit,
     alVolver: () -> Unit
 ) {
@@ -521,7 +551,9 @@ fun PantallaCrearGrupoTv(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(solicitadorEnfoque)
                     )
                 }
 
@@ -613,6 +645,7 @@ fun PantallaCrearGrupoTv(
 @Composable
 fun PantallaUnirseGrupoTv(
     estaCargando: Boolean,
+    solicitadorEnfoque: FocusRequester,
     alUnirse: (String) -> Unit,
     alVolver: () -> Unit
 ) {
@@ -700,7 +733,9 @@ fun PantallaUnirseGrupoTv(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(solicitadorEnfoque)
                     )
                 }
 
@@ -782,6 +817,7 @@ fun PantallaDetalleGrupoTv(
     codigoGrupo: String,
     descripcionGrupo: String?,
     estadoUi: EstadoUiGrupoTv,
+    solicitadorEnfoque: FocusRequester,
     alSalirGrupo: () -> Unit,
     alEliminarGrupo: () -> Unit,
     alVolver: () -> Unit
@@ -807,7 +843,10 @@ fun PantallaDetalleGrupoTv(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(onClick = alVolver) {
+            IconButton(
+                onClick = alVolver,
+                modifier = Modifier.focusRequester(solicitadorEnfoque)
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Volver",
