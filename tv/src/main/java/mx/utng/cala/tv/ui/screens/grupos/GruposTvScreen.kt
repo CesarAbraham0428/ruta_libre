@@ -657,6 +657,7 @@ fun PantallaUnirseGrupoTv(
     alVolver: () -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
+    var botonVolverEnfocado by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -664,13 +665,27 @@ fun PantallaUnirseGrupoTv(
             .padding(horizontal = 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = alVolver) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+            Surface(
+                onClick = alVolver,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused },
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = SurfaceVariant,
+                    focusedContainerColor = Primary,
+                    pressedContainerColor = PrimaryContainer
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = if (botonVolverEnfocado) Color.Black else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -826,6 +841,7 @@ fun PantallaDetalleGrupoTvLegacy(
     var pestanaSeleccionada by remember { mutableStateOf(0) }
     var mostrarConfirmarSalir by remember { mutableStateOf(false) }
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
+    var botonVolverEnfocado by remember { mutableStateOf(false) }
 
     val miembros = estadoUi.listaMiembros
     val distanciaTotal = miembros.sumOf { it.distancia }
@@ -844,16 +860,28 @@ fun PantallaDetalleGrupoTvLegacy(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(
+            Surface(
                 onClick = alVolver,
-                modifier = Modifier.focusRequester(solicitadorEnfoque)
+                modifier = Modifier
+                    .size(40.dp)
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused }
+                    .focusRequester(solicitadorEnfoque),
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = SurfaceVariant,
+                    focusedContainerColor = Primary,
+                    pressedContainerColor = PrimaryContainer
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = if (botonVolverEnfocado) Color.Black else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -1021,33 +1049,7 @@ fun PantallaDetalleGrupoTvLegacy(
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
-
-                    Button(
-                        onClick = alVolver,
-                        colors = ButtonDefaults.colors(
-                            containerColor = PrimaryContainer,
-                            contentColor = Color.White,
-                            focusedContainerColor = Primary,
-                            focusedContentColor = Color.Black
-                        ),
-                        scale = ButtonDefaults.scale(focusedScale = 1.02f),
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = null,
-                                tint = androidx.compose.material3.LocalContentColor.current,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unirse a otro grupo", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    // Botón 'Unirse a otro grupo' eliminado
                 }
             } else {
                 Column(
@@ -1087,34 +1089,7 @@ fun PantallaDetalleGrupoTvLegacy(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = alVolver,
-                        colors = ButtonDefaults.colors(
-                            containerColor = PrimaryContainer,
-                            contentColor = Color.White,
-                            focusedContainerColor = Primary,
-                            focusedContentColor = Color.Black
-                        ),
-                        scale = ButtonDefaults.scale(focusedScale = 1.02f),
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = null,
-                                tint = androidx.compose.material3.LocalContentColor.current,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unirse a otro grupo", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    // Botón 'Unirse a otro grupo' eliminado
                 }
             }
         }

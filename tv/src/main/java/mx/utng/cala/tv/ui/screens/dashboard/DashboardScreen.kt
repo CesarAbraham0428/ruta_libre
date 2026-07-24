@@ -12,7 +12,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.tv.material3.*
@@ -39,11 +42,21 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel()
 ) {
     val estadoUi by viewModel.estadoUi.collectAsState()
+    val solicitadorEnfoque = remember { FocusRequester() }
 
     // Cargar datos al iniciar
     LaunchedEffect(Unit) {
         viewModel.cargarDashboardSemanal(idUsuario)
         viewModel.cargarComparacionSemanal(idUsuario)
+    }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        try {
+            solicitadorEnfoque.requestFocus()
+        } catch (e: Exception) {
+            // Ignorar si el nodo no está listo
+        }
     }
 
     Row(
@@ -70,7 +83,8 @@ fun DashboardScreen(
                 periodo = estadoUi.periodoSeleccionado,
                 alCambiarPeriodo = { nuevoPeriodo ->
                     viewModel.cambiarPeriodo(nuevoPeriodo, idUsuario)
-                }
+                },
+                solicitadorEnfoque = solicitadorEnfoque
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -202,7 +216,8 @@ fun DashboardScreen(
 @Composable
 fun FilaCabecera(
     periodo: PeriodoDashboard,
-    alCambiarPeriodo: (PeriodoDashboard) -> Unit
+    alCambiarPeriodo: (PeriodoDashboard) -> Unit,
+    solicitadorEnfoque: FocusRequester
 ) {
     val tituloPeriodo = if (periodo == PeriodoDashboard.SEMANAL) "DASHBOARD SEMANAL" else "DASHBOARD MENSUAL"
     val rangoFechas = if (periodo == PeriodoDashboard.SEMANAL) obtenerRangoSemanaActual() else obtenerRangoMesActual()
@@ -236,7 +251,8 @@ fun FilaCabecera(
             BotonTabPeriodo(
                 texto = "Semanal",
                 activo = periodo == PeriodoDashboard.SEMANAL,
-                alHacerClick = { alCambiarPeriodo(PeriodoDashboard.SEMANAL) }
+                alHacerClick = { alCambiarPeriodo(PeriodoDashboard.SEMANAL) },
+                modifier = Modifier.focusRequester(solicitadorEnfoque)
             )
             BotonTabPeriodo(
                 texto = "Mensual",
@@ -252,7 +268,8 @@ fun FilaCabecera(
 fun BotonTabPeriodo(
     texto: String,
     activo: Boolean,
-    alHacerClick: () -> Unit
+    alHacerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = alHacerClick,
@@ -263,7 +280,7 @@ fun BotonTabPeriodo(
             pressedContainerColor = Surface
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
-        modifier = Modifier.width(100.dp).height(36.dp)
+        modifier = modifier.width(100.dp).height(36.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),

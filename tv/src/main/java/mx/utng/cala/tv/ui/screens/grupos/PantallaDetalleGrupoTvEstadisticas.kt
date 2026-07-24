@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +50,7 @@ fun PantallaDetalleGrupoTv(
     var miembroSeleccionadoIndice by remember { mutableStateOf(0) }
     var mostrarConfirmarSalir by remember { mutableStateOf(false) }
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
+    var botonVolverEnfocado by remember { mutableStateOf(false) }
 
     val miembros = estadoUi.listaMiembros
     val miembroSeleccionado = miembros.getOrNull(miembroSeleccionadoIndice)
@@ -134,16 +136,28 @@ fun PantallaDetalleGrupoTv(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            Surface(
                 onClick = alVolver,
-                modifier = Modifier.focusRequester(solicitadorEnfoque)
+                modifier = Modifier
+                    .size(40.dp)
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused }
+                    .focusRequester(solicitadorEnfoque),
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = SurfaceVariant,
+                    focusedContainerColor = Primary,
+                    pressedContainerColor = PrimaryContainer
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
             ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = if (botonVolverEnfocado) Color.Black else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -319,9 +333,7 @@ fun PantallaDetalleGrupoTv(
                                 )
                             }
                         }
-                        item {
-                            BotonVolverAGruposTv(alVolver)
-                        }
+                        // Botón 'Unirse a otro grupo' eliminado
                     }
                 }
 
@@ -356,7 +368,7 @@ fun PantallaDetalleGrupoTv(
                                 }
                             }
                         }
-                        BotonVolverAGruposTv(alVolver)
+                        // Botón 'Unirse a otro grupo' eliminado
                     }
                 }
 
@@ -658,35 +670,4 @@ private fun formatearTiempoGrupoTv(segundosTotales: Int): String {
     return "%02dh %02dmin".format(horas, minutos)
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun BotonVolverAGruposTv(alVolver: () -> Unit) {
-    Button(
-        onClick = alVolver,
-        colors = ButtonDefaults.colors(
-            containerColor = PrimaryContainer,
-            contentColor = Color.White,
-            focusedContainerColor = Primary,
-            focusedContentColor = Color.Black
-        ),
-        scale = ButtonDefaults.scale(focusedScale = 1.02f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Groups,
-                contentDescription = null,
-                tint = androidx.compose.material3.LocalContentColor.current,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Unirse a otro grupo", fontWeight = FontWeight.Bold)
-        }
-    }
-}
+
