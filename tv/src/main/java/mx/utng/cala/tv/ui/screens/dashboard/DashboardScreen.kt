@@ -1,6 +1,5 @@
 package mx.utng.cala.tv.ui.screens.dashboard
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,12 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +20,8 @@ import mx.utng.cala.core.data.dto.response.ComparacionRendimientoResponse
 import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
 import mx.utng.cala.core.data.dto.response.RespuestaDashboardMensual
 import mx.utng.cala.tv.ui.components.BarraLateralTv
+import mx.utng.cala.tv.ui.components.PuntoDatosGrafica
+import mx.utng.cala.tv.ui.components.TarjetaGraficaRendimiento
 import mx.utng.cala.tv.ui.navigation.TvRoutes
 import mx.utng.cala.tv.ui.theme.*
 import mx.utng.cala.tv.ui.viewmodel.DashboardViewModel
@@ -33,13 +29,6 @@ import mx.utng.cala.tv.ui.viewmodel.PeriodoDashboard
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
-
-data class PuntoDatosGrafico(
-    val etiqueta: String,
-    val distancia: Double,
-    val pasos: Int,
-    val calorias: Int
-)
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -168,9 +157,13 @@ fun DashboardScreen(
                             .weight(0.62f)
                             .fillMaxHeight()
                     ) {
-                        TarjetaGraficoRendimiento(
+                        TarjetaGraficaRendimiento(
                             puntos = puntosGrafico,
-                            periodo = estadoUi.periodoSeleccionado,
+                            titulo = if (estadoUi.periodoSeleccionado == PeriodoDashboard.SEMANAL) {
+                                "RENDIMIENTO POR D\u00CDA"
+                            } else {
+                                "RENDIMIENTO POR SEMANA"
+                            },
                             sinDatos = sinDatos
                         )
                     }
@@ -435,257 +428,6 @@ fun TarjetaMetrica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun TarjetaGraficoRendimiento(
-    puntos: List<PuntoDatosGrafico>,
-    periodo: PeriodoDashboard,
-    sinDatos: Boolean = false
-) {
-    val tituloGrafica = if (periodo == PeriodoDashboard.SEMANAL) "RENDIMIENTO POR DÍA" else "RENDIMIENTO POR SEMANA"
-
-    Surface(
-        onClick = {},
-        modifier = Modifier.fillMaxSize(),
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(16.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Surface,
-            focusedContainerColor = Surface,
-            pressedContainerColor = Surface
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            // Título de la Gráfica y Legendas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = tituloGrafica,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-
-                // Legenda de colores (solo si hay datos)
-                if (!sinDatos) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ElementoLegenda(color = Distancia, etiqueta = "Distancia (km)")
-                        ElementoLegenda(color = Pasos, etiqueta = "Pasos (miles)")
-                        ElementoLegenda(color = Calorias, etiqueta = "Calorías (kcal)")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Dibujo de la gráfica con Canvas o Estado Vacío
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
-                if (sinDatos) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.BarChart,
-                                contentDescription = null,
-                                tint = OnSurfaceVariant.copy(alpha = 0.3f),
-                                modifier = Modifier.size(60.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "Sin actividad en este período",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Aquí se graficará tu rendimiento diario en cuanto comiences a registrar entrenamientos.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = OnSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 24.dp),
-                                alignment = Alignment.CenterHorizontally
-                            )
-                        }
-                    }
-                } else {
-                    GraficoCanvasPersonalizado(
-                        puntos = puntos,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ElementoLegenda(color: Color, etiqueta: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(color, RoundedCornerShape(2.dp))
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = etiqueta,
-            style = MaterialTheme.typography.bodySmall,
-            color = OnSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun GraficoCanvasPersonalizado(
-    puntos: List<PuntoDatosGrafico>,
-    modifier: Modifier = Modifier
-) {
-    val colorRejilla = Outline
-    val colorTexto = OnSurfaceVariant
-
-    Canvas(modifier = modifier) {
-        val anchoTotal = size.width
-        val altoTotal = size.height
-        val margenIzquierdo = 40f
-        val margenInferior = 30f
-        val margenSuperior = 20f
-        val margenDerecho = 40f
-
-        val areaGraficoAncho = anchoTotal - margenIzquierdo - margenDerecho
-        val areaGraficoAlto = altoTotal - margenSuperior - margenInferior
-
-        // 1. Dibujar líneas de cuadrícula horizontales
-        val numLineasHorizontal = 4
-        for (i in 0..numLineasHorizontal) {
-            val y = margenSuperior + areaGraficoAlto - (areaGraficoAlto / numLineasHorizontal) * i
-            drawLine(
-                color = colorRejilla,
-                start = Offset(margenIzquierdo, y),
-                end = Offset(anchoTotal - margenDerecho, y),
-                strokeWidth = 1f
-            )
-        }
-
-        if (puntos.isEmpty()) return@Canvas
-
-        // 2. Calcular los valores máximos para escalar
-        val maxDistancia = (puntos.maxOfOrNull { it.distancia } ?: 1.0).coerceAtLeast(5.0)
-        val maxPasos = (puntos.maxOfOrNull { it.pasos } ?: 1).coerceAtLeast(1000)
-        val maxCalorias = (puntos.maxOfOrNull { it.calorias } ?: 1).coerceAtLeast(500)
-
-        // 3. Dibujar las barras y calcular las posiciones para la línea de pasos
-        val cantElementos = puntos.size
-        val anchoGrupo = areaGraficoAncho / cantElementos
-        val anchoBarra = (anchoGrupo * 0.18f).coerceAtLeast(4f)
-        val espacioEntreBarras = 4f
-
-        val puntosPasosLine = mutableListOf<Offset>()
-
-        puntos.forEachIndexed { indice, punto ->
-            val grupoCentroX = margenIzquierdo + anchoGrupo * indice + anchoGrupo / 2
-
-            // Posicionamiento de las 3 barras consecutivas en el grupo
-            // Barra 1: Distancia (Verde)
-            val alturaDistancia = (punto.distancia / maxDistancia) * areaGraficoAlto
-            val barDistanciaLeft = grupoCentroX - (anchoBarra * 1.5f) - espacioEntreBarras
-            val barDistanciaTop = margenSuperior + areaGraficoAlto - alturaDistancia
-            drawRoundRect(
-                color = Distancia,
-                topLeft = Offset(barDistanciaLeft, barDistanciaTop.toFloat()),
-                size = Size(anchoBarra, alturaDistancia.toFloat()),
-                cornerRadius = CornerRadius(4f, 4f)
-            )
-
-            // Barra 2: Pasos (Azul)
-            val alturaPasos = (punto.pasos.toDouble() / maxPasos) * areaGraficoAlto
-            val barPasosLeft = grupoCentroX - (anchoBarra / 2f)
-            val barPasosTop = margenSuperior + areaGraficoAlto - alturaPasos
-            drawRoundRect(
-                color = Pasos,
-                topLeft = Offset(barPasosLeft, barPasosTop.toFloat()),
-                size = Size(anchoBarra, alturaPasos.toFloat()),
-                cornerRadius = CornerRadius(4f, 4f)
-            )
-
-            // Guardar posición para la línea que unirá los pasos
-            puntosPasosLine.add(Offset(grupoCentroX, barPasosTop.toFloat()))
-
-            // Barra 3: Calorías (Naranja)
-            val alturaCalorias = (punto.calorias.toDouble() / maxCalorias) * areaGraficoAlto
-            val barCaloriasLeft = grupoCentroX + (anchoBarra / 2f) + espacioEntreBarras
-            val barCaloriasTop = margenSuperior + areaGraficoAlto - alturaCalorias
-            drawRoundRect(
-                color = Calorias,
-                topLeft = Offset(barCaloriasLeft, barCaloriasTop.toFloat()),
-                size = Size(anchoBarra, alturaCalorias.toFloat()),
-                cornerRadius = CornerRadius(4f, 4f)
-            )
-        }
-
-        // 4. Dibujar línea azul conectando la parte superior de las barras de pasos
-        if (puntosPasosLine.size > 1) {
-            val path = Path().apply {
-                moveTo(puntosPasosLine[0].x, puntosPasosLine[0].y)
-                for (i in 1 until puntosPasosLine.size) {
-                    lineTo(puntosPasosLine[i].x, puntosPasosLine[i].y)
-                }
-            }
-            drawPath(
-                path = path,
-                color = Pasos,
-                style = Stroke(width = 3.dp.toPx())
-            )
-        }
-
-        // Dibujar pequeños círculos sobre los puntos de pasos para mayor estética
-        puntosPasosLine.forEach { punto ->
-            drawCircle(
-                color = Pasos,
-                radius = 5.dp.toPx(),
-                center = punto
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 2.dp.toPx(),
-                center = punto
-            )
-        }
-    }
-
-    // Dibujar etiquetas X debajo de la gráfica
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(30.dp)
-            .padding(start = 40.dp, end = 40.dp)
-            .offset(y = 200.dp), // Ajuste empírico de offset
-        horizontalArrangement = Arrangement.SpaceAround
-    ) {
-        puntos.forEach { punto ->
-            Text(
-                text = punto.etiqueta,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorTexto
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
 fun TarjetaProgresoComparativa(
     comparacion: ComparacionRendimientoResponse?,
     esMensual: Boolean,
@@ -881,9 +623,9 @@ fun TarjetaTendenciaGeneral(
     }
 
     val descripcionMotivacional = when (estado) {
-        EstadoTendencia.MEJORA -> "Tu rendimiento ha mejorado respecto al periodo anterior. ¡Sigue así!"
-        EstadoTendencia.EMPEORA -> "Tu rendimiento ha disminuido un poco. ¡Tú puedes lograr tus metas!"
-        EstadoTendencia.ESTABLE -> "Has mantenido un rendimiento constante respecto al periodo anterior. ¡Sigue adelante!"
+        EstadoTendencia.MEJORA -> "Tu rendimiento ha mejorado respecto al periodo anterior. \u00A1Sigue as\u00ED!"
+        EstadoTendencia.EMPEORA -> "Tu rendimiento ha disminuido un poco. \u00A1T\u00FA puedes lograr tus metas!"
+        EstadoTendencia.ESTABLE -> "Has mantenido un rendimiento constante respecto al periodo anterior. \u00A1Sigue adelante!"
         EstadoTendencia.SIN_DATOS -> "Registra tu primer entrenamiento para empezar a calcular tu tendencia."
     }
 
@@ -988,11 +730,11 @@ fun mapperPuntosGrafico(
     semanal: DashboardSemanalResponse?,
     mensual: RespuestaDashboardMensual?,
     periodo: PeriodoDashboard
-): List<PuntoDatosGrafico> {
+): List<PuntoDatosGrafica> {
     return if (periodo == PeriodoDashboard.SEMANAL) {
         semanal?.rendimientoDiario?.map {
             // dia es "Lun", "Mar", etc.
-            PuntoDatosGrafico(
+            PuntoDatosGrafica(
                 etiqueta = it.dia,
                 distancia = it.distancia,
                 pasos = it.pasos,
@@ -1002,7 +744,7 @@ fun mapperPuntosGrafico(
     } else {
         mensual?.rendimientoSemanal?.map {
             // semana es "Semana 1", "Semana 2", etc.
-            PuntoDatosGrafico(
+            PuntoDatosGrafica(
                 etiqueta = it.semana.replace("Semana ", "Sem "),
                 distancia = it.distancia,
                 pasos = it.pasos,

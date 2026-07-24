@@ -884,6 +884,40 @@ Obtiene la lista de integrantes del grupo con sus métricas acumuladas durante l
 
 ---
 
+#### `GET /:idGrupo/miembros/:idUsuario/estadisticas`
+
+Obtiene las estadisticas individuales del usuario seleccionado dentro de un grupo. El endpoint valida primero que la relacion entre `idGrupo` e `idUsuario` exista en `usuario_grupo`; de esta forma, la Smart TV no puede consultar estadisticas de un usuario que no pertenece al grupo.
+
+La consulta utiliza la semana actual, comenzando el lunes mediante `date_trunc('week', current_date)`, y siempre devuelve los siete dias aunque no existan entrenamientos en alguno de ellos. Los dias sin actividad se rellenan con valores `0`.
+
+**Respuesta `200 OK`:**
+```json
+{
+  "distanciaTotal": 15.3,
+  "pasosTotales": 12000,
+  "caloriasTotales": 950,
+  "tiempoTotal": 5400,
+  "rendimientoDiario": [
+    { "dia": "Lun", "distancia": 5.0, "pasos": 4000, "calorias": 300, "tiempo": 1800 },
+    { "dia": "Mar", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 },
+    { "dia": "Mie", "distancia": 2.5, "pasos": 2000, "calorias": 150, "tiempo": 900 },
+    { "dia": "Jue", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 },
+    { "dia": "Vie", "distancia": 4.8, "pasos": 4000, "calorias": 300, "tiempo": 1800 },
+    { "dia": "Sab", "distancia": 3.0, "pasos": 2000, "calorias": 200, "tiempo": 900 },
+    { "dia": "Dom", "distancia": 0.0, "pasos": 0, "calorias": 0, "tiempo": 0 }
+  ]
+}
+```
+
+**Respuestas de error:**
+- `400 Bad Request`: `idGrupo` o `idUsuario` no valido.
+- `404 Not Found`: el usuario no pertenece al grupo.
+- `500 Internal Server Error`: error al consultar PostgreSQL.
+
+Este contrato reutiliza la estructura de `GET /entrenamientos/semana/:idUsuario`, por lo que los clientes pueden mostrar las estadisticas personales sin crear un DTO adicional.
+
+---
+
 #### `GET /:idGrupo/ranking`
 
 Obtiene la tabla de clasificación del grupo ordenada descendentemente por distancia acumulada en la semana.

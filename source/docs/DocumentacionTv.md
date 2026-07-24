@@ -15,6 +15,7 @@ Este documento detalla la arquitectura, el diseño de la interfaz de usuario, el
    - [Panel de Control y Estadísticas (DashboardScreen)](#panel-de-control-y-estadísticas-dashboardscreen)
    - [Gráfica de Rendimiento Multi-métrica Nativa (Canvas)](#gráfica-de-rendimiento-multi-métrica-nativa-canvas)
    - [Comunidad y Rankings Grupales (GruposTvScreen)](#comunidad-y-rankings-grupales-grupostvscreen)
+   - [Estadisticas grupales e individuales (GruposTvScreen)](#estadisticas-grupales-e-individuales-grupostvscreen)
    - [Centro Multimedia y Reproductor de YouTube (VideosScreen & ReproductorVideoActivity)](#centro-multimedia-y-reproductor-de-youtube-videosscreen--reproductorvideoactivity)
 5. [Endpoints Consultados y Servicios Consumidos](#endpoints-consultados-y-servicios-consumidos)
    - [Endpoints de Autenticación y Dispositivos (Backend REST)](#endpoints-de-autenticación-y-dispositivos-backend-rest)
@@ -152,6 +153,22 @@ tv/src/main/java/mx/utng/cala/tv/
 
 ---
 
+### Estadisticas grupales e individuales (GruposTvScreen)
+
+El detalle de un grupo ahora se organiza en tres pestanas enfocadas para navegacion con D-pad:
+
+1. **Actividad:** muestra las metricas acumuladas del grupo y la grafica de rendimiento grupal.
+2. **Miembros:** muestra la lista de integrantes y el ranking semanal.
+3. **Estadisticas:** permite seleccionar un miembro y consultar sus metricas individuales y su grafica semanal.
+
+La vista `PantallaDetalleGrupoTvEstadisticas` mantiene el estado `miembroSeleccionadoIndice` y ofrece botones `<` y `>` enfocables. La navegacion es circular, por lo que al avanzar desde el ultimo miembro se regresa al primero y viceversa.
+
+Al cambiar de miembro, `GrupoTvViewModel` solicita sus estadisticas bajo demanda mediante `cargarEstadisticasMiembro`. Las respuestas se almacenan en `estadisticasMiembro`, evitando consultas repetidas durante la navegacion. La pantalla muestra estados de carga y error, y conserva las metricas resumidas de la lista como respaldo si la consulta individual falla.
+
+La grafica se extrajo a `ui/components/GraficaRendimientoTv.kt` para que Dashboard y Grupos compartan `PuntoDatosGrafica`, `GraficaCanvasPersonalizada` y `TarjetaGraficaRendimiento`. El componente recibe un titulo y una leyenda configurables, por lo que se reutiliza para el rendimiento personal, grupal e individual.
+
+---
+
 ### Centro Multimedia y Reproductor de YouTube (VideosScreen & ReproductorVideoActivity)
 - **Buscador con Debounce:** Cuadro de texto `OutlinedTextField` adaptado a control remoto que aplica una pausa prudencial de 400ms antes de emitir la consulta HTTP, evitando saturar la API con cada pulsación.
 - **Filtros por Categoría y Nivel:** Categorías (Videos, Consejos, Carreras, Tips) y subfiltros técnicos (Todos, Principiantes, Intermedios, Avanzados).
@@ -193,6 +210,7 @@ tv/src/main/java/mx/utng/cala/tv/
 | `POST` | `/api/grupos/unirse` | `GrupoTvViewModel` | Une al usuario a un grupo mediante su código de invitación de 6 caracteres. |
 | `GET` | `/api/grupos/{idGrupo}/miembros` | `GrupoTvViewModel` | Retorna los miembros registrados en el grupo con su rendimiento de la semana en curso. |
 | `GET` | `/api/grupos/{idGrupo}/ranking` | `GrupoTvViewModel` | Retorna la tabla de posiciones semanal de los miembros del grupo por distancia recorrida. |
+| `GET` | `/api/grupos/{idGrupo}/miembros/{idUsuario}/estadisticas` | `GrupoTvViewModel` | Obtiene los totales y el desglose diario de la semana actual para un miembro del grupo. Se solicita al seleccionar el miembro. |
 | `DELETE` | `/api/grupos/{idGrupo}/miembros/{idUsuario}` | `GrupoTvViewModel` | Elimina la pertenencia del usuario al grupo (salir del grupo). |
 | `DELETE` | `/api/grupos/{idGrupo}?idUsuario={id}` | `GrupoTvViewModel` | Elimina el grupo y sus miembros en cascada (solo permitido al dueño/creador). |
 

@@ -82,6 +82,12 @@ interface ApiService {
     @GET("grupos/{idGrupo}/miembros")
     suspend fun getMiembrosGrupo(@Path("idGrupo") idGrupo: Int): Response<List<MiembroGrupoResponse>>
 
+    @GET("grupos/{idGrupo}/miembros/{idUsuario}/estadisticas")
+    suspend fun getEstadisticasMiembroGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Path("idUsuario") idUsuario: Int
+    ): Response<DashboardSemanalResponse>
+
     @GET("grupos/{idGrupo}/ranking")
     suspend fun getRankingGrupo(@Path("idGrupo") idGrupo: Int): Response<RankingResponse>
 

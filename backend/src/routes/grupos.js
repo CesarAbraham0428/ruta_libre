@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+const DAY_MAP = {
+  1: 'Lun',
+  2: 'Mar',
+  3: 'Mie',
+  4: 'Jue',
+  5: 'Vie',
+  6: 'Sab',
+  7: 'Dom'
+};
+
 // Generador de código único de 6 caracteres
 function generateGroupCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -206,6 +216,87 @@ router.get('/:idGrupo/miembros', async (req, res) => {
     res.json(miembros);
   } catch (error) {
     console.error('Error en /grupos/:idGrupo/miembros:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/grupos/:idGrupo/miembros/:idUsuario/estadisticas
+// Estadisticas semanales de un miembro que pertenece al grupo.
+router.get('/:idGrupo/miembros/:idUsuario/estadisticas', async (req, res) => {
+  const idGrupo = parseInt(req.params.idGrupo, 10);
+  const idUsuario = parseInt(req.params.idUsuario, 10);
+
+  if (!Number.isInteger(idGrupo) || idGrupo <= 0 || !Number.isInteger(idUsuario) || idUsuario <= 0) {
+    return res.status(400).json({ error: 'ID de grupo o usuario no valido' });
+  }
+
+  try {
+    const membershipResult = await db.query(
+      'SELECT 1 FROM usuario_grupo WHERE id_grupo = $1 AND id_usuario = $2',
+      [idGrupo, idUsuario]
+    );
+
+    if (membershipResult.rows.length === 0) {
+      return res.status(404).json({ error: 'El usuario no pertenece al grupo' });
+    }
+
+    const [totalResult, dailyResult] = await Promise.all([
+      db.query(
+        `SELECT COALESCE(SUM(distancia), 0) AS distancia_total,
+                COALESCE(SUM(pasos), 0) AS pasos_totales,
+                COALESCE(SUM(calorias), 0) AS calorias_totales,
+                COALESCE(SUM(tiempo), 0) AS tiempo_total
+         FROM entrenamiento
+         WHERE id_usuario = $1
+           AND fecha_inicio >= date_trunc('week', current_date)`,
+        [idUsuario]
+      ),
+      db.query(
+        `SELECT EXTRACT(ISODOW FROM fecha_inicio) AS dia_num,
+                COALESCE(SUM(distancia), 0) AS distancia,
+                COALESCE(SUM(pasos), 0) AS pasos,
+                COALESCE(SUM(calorias), 0) AS calorias,
+                COALESCE(SUM(tiempo), 0) AS tiempo
+         FROM entrenamiento
+         WHERE id_usuario = $1
+           AND fecha_inicio >= date_trunc('week', current_date)
+         GROUP BY EXTRACT(ISODOW FROM fecha_inicio)
+         ORDER BY dia_num`,
+        [idUsuario]
+      )
+    ]);
+
+    const totals = totalResult.rows[0];
+    const rendimientoDiario = Array.from({ length: 7 }, (_, indice) => ({
+      dia: DAY_MAP[indice + 1],
+      distancia: 0.0,
+      pasos: 0,
+      calorias: 0,
+      tiempo: 0
+    }));
+
+    for (const row of dailyResult.rows) {
+      const indice = parseInt(row.dia_num, 10) - 1;
+      if (indice >= 0 && indice < rendimientoDiario.length) {
+        rendimientoDiario[indice] = {
+          dia: DAY_MAP[indice + 1],
+          distancia: parseFloat(row.distancia),
+          pasos: parseInt(row.pasos, 10),
+          calorias: parseInt(row.calorias, 10),
+          tiempo: parseInt(row.tiempo, 10)
+        };
+      }
+    }
+
+    res.json({
+      distanciaTotal: parseFloat(totals.distancia_total),
+      pasosTotales: parseInt(totals.pasos_totales, 10),
+      caloriasTotales: parseInt(totals.calorias_totales, 10),
+      tiempoTotal: parseInt(totals.tiempo_total, 10),
+      rendimientoDiario
+    });
+  } catch (error) {
+    console.error('Error en estadisticas semanales del miembro:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

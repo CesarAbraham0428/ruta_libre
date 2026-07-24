@@ -145,6 +145,7 @@ fun GruposTvScreen(
                 }
                 VistaGruposTv.DETALLE -> {
                     PantallaDetalleGrupoTv(
+                        idGrupo = grupoSeleccionadoId ?: 0,
                         idUsuarioActual = idUsuario,
                         idCreadorGrupo = grupoSeleccionadoIdCreador,
                         nombreGrupo = grupoSeleccionadoNombre,
@@ -152,6 +153,11 @@ fun GruposTvScreen(
                         descripcionGrupo = grupoSeleccionadoDescripcion,
                         estadoUi = estadoUi,
                         solicitadorEnfoque = solicitadorEnfoqueDetalle,
+                        alCargarEstadisticasMiembro = { idMiembro ->
+                            grupoSeleccionadoId?.let { idGrupo ->
+                                grupoViewModel.cargarEstadisticasMiembro(idGrupo, idMiembro)
+                            }
+                        },
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->
                                 grupoViewModel.salirDeGrupo(idUsuario, idGrupo) {
@@ -807,7 +813,7 @@ fun PantallaUnirseGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun PantallaDetalleGrupoTv(
+fun PantallaDetalleGrupoTvLegacy(
     idUsuarioActual: Int,
     idCreadorGrupo: Int?,
     nombreGrupo: String,

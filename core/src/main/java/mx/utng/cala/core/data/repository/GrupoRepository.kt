@@ -3,6 +3,7 @@ package mx.utng.cala.core.data.repository
 import com.google.gson.Gson
 import mx.utng.cala.core.data.dto.request.CrearGrupoRequest
 import mx.utng.cala.core.data.dto.request.UnirseGrupoRequest
+import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
 import mx.utng.cala.core.data.dto.response.GrupoResponse
 import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 import mx.utng.cala.core.data.dto.response.RankingResponse
@@ -64,6 +65,23 @@ class GrupoRepository {
                 response.body()?.let { Result.success(it) }
                     ?: Result.failure(Exception("La API no devolvió los miembros"))
             } else Result.failure(Exception(errorMessage(response, "Error al obtener miembros")))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getEstadisticasMiembro(
+        idGrupo: Int,
+        idUsuario: Int
+    ): Result<DashboardSemanalResponse> {
+        return try {
+            val response = api.getEstadisticasMiembroGrupo(idGrupo, idUsuario)
+            if (response.isSuccessful) {
+                response.body()?.let { Result.success(it) }
+                    ?: Result.failure(Exception("La API no devolvio las estadisticas del miembro"))
+            } else {
+                Result.failure(Exception(errorMessage(response, "Error al obtener estadisticas del miembro")))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

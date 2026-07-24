@@ -6,6 +6,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
 import mx.utng.cala.core.data.dto.response.GrupoResponse
 import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 import mx.utng.cala.core.data.repository.GrupoRepository
@@ -14,6 +15,9 @@ data class EstadoUiGrupoTv(
     val listaGrupos: List<GrupoResponse> = emptyList(),
     val listaMiembros: List<MiembroGrupoResponse> = emptyList(),
     val listaRanking: List<MiembroGrupoResponse> = emptyList(),
+    val estadisticasMiembro: Map<Int, DashboardSemanalResponse> = emptyMap(),
+    val miembroEstadisticasCargandoId: Int? = null,
+    val mensajeErrorEstadisticas: String? = null,
     val estaCargando: Boolean = false,
     val mensajeError: String? = null
 )
@@ -66,7 +70,10 @@ class GrupoTvViewModel : ViewModel() {
                 estaCargando = true,
                 mensajeError = null,
                 listaMiembros = emptyList(),
-                listaRanking = emptyList()
+                listaRanking = emptyList(),
+                estadisticasMiembro = emptyMap(),
+                miembroEstadisticasCargandoId = null,
+                mensajeErrorEstadisticas = null
             )
 
             val miembrosDiferidos = async { repositorio.getMiembros(idGrupo) }
@@ -84,6 +91,33 @@ class GrupoTvViewModel : ViewModel() {
                 listaRanking = ranking?.miembros ?: emptyList(),
                 estaCargando = false,
                 mensajeError = error?.message
+            )
+        }
+    }
+
+    fun cargarEstadisticasMiembro(idGrupo: Int, idUsuario: Int) {
+        if (_estadoUi.value.estadisticasMiembro.containsKey(idUsuario)) return
+
+        viewModelScope.launch {
+            _estadoUi.value = _estadoUi.value.copy(
+                miembroEstadisticasCargandoId = idUsuario,
+                mensajeErrorEstadisticas = null
+            )
+
+            repositorio.getEstadisticasMiembro(idGrupo, idUsuario).fold(
+                onSuccess = { estadisticas ->
+                    _estadoUi.value = _estadoUi.value.copy(
+                        estadisticasMiembro = _estadoUi.value.estadisticasMiembro + (idUsuario to estadisticas),
+                        miembroEstadisticasCargandoId = null,
+                        mensajeErrorEstadisticas = null
+                    )
+                },
+                onFailure = { error ->
+                    _estadoUi.value = _estadoUi.value.copy(
+                        miembroEstadisticasCargandoId = null,
+                        mensajeErrorEstadisticas = error.message ?: "No se pudieron cargar las estadisticas del miembro"
+                    )
+                }
             )
         }
     }
