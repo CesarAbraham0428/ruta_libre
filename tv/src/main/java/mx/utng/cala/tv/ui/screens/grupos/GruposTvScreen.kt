@@ -154,9 +154,7 @@ fun GruposTvScreen(
                         estadoUi = estadoUi,
                         solicitadorEnfoque = solicitadorEnfoqueDetalle,
                         alCargarEstadisticasMiembro = { idMiembro ->
-                            grupoSeleccionadoId?.let { idGrupo ->
-                                grupoViewModel.cargarEstadisticasMiembro(idGrupo, idMiembro)
-                            }
+                            grupoViewModel.cargarEstadisticasMiembro(idMiembro)
                         },
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->

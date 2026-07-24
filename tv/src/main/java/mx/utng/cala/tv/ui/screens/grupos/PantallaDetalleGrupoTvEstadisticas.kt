@@ -3,6 +3,7 @@ package mx.utng.cala.tv.ui.screens.grupos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -83,6 +84,8 @@ fun PantallaDetalleGrupoTv(
 
     val focoAnterior = remember { FocusRequester() }
     val focoSiguiente = remember { FocusRequester() }
+    val scrollActividad = rememberLazyListState()
+    val scrollEstadisticas = rememberLazyListState()
 
     fun navegarMiembroAnterior() {
         if (miembros.isNotEmpty()) {
@@ -112,6 +115,13 @@ fun PantallaDetalleGrupoTv(
         if (pestanaSeleccionada == 2 && miembros.isNotEmpty()) {
             delay(100)
             runCatching { focoAnterior.requestFocus() }
+        }
+    }
+
+    LaunchedEffect(pestanaSeleccionada, miembroSeleccionado?.idUsuario) {
+        when (pestanaSeleccionada) {
+            0 -> scrollActividad.scrollToItem(0)
+            2 -> scrollEstadisticas.scrollToItem(0)
         }
     }
 
@@ -261,50 +271,57 @@ fun PantallaDetalleGrupoTv(
         ) {
             when (pestanaSeleccionada) {
                 0 -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        state = scrollActividad,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            TarjetaMetricaDetalleTv(
-                                titulo = "Distancia total",
-                                valor = String.format("%.1f km", distanciaTotal),
-                                icono = Icons.Default.DirectionsRun,
-                                colorMetrica = Distancia,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TarjetaMetricaDetalleTv(
-                                titulo = "Calorias totales",
-                                valor = String.format("%,d kcal", caloriasTotal),
-                                icono = Icons.Default.LocalFireDepartment,
-                                colorMetrica = Calorias,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TarjetaMetricaDetalleTv(
-                                titulo = "Tiempo total",
-                                valor = (tiempoTotalMinutos / 60).toString() + "h " +
-                                    (tiempoTotalMinutos % 60).toString() + "min",
-                                icono = Icons.Default.AccessTime,
-                                colorMetrica = Tiempo,
-                                modifier = Modifier.weight(1f)
-                            )
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                TarjetaMetricaDetalleTv(
+                                    titulo = "Distancia total",
+                                    valor = String.format("%.1f km", distanciaTotal),
+                                    icono = Icons.Default.DirectionsRun,
+                                    colorMetrica = Distancia,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TarjetaMetricaDetalleTv(
+                                    titulo = "Calorias totales",
+                                    valor = String.format("%,d kcal", caloriasTotal),
+                                    icono = Icons.Default.LocalFireDepartment,
+                                    colorMetrica = Calorias,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TarjetaMetricaDetalleTv(
+                                    titulo = "Tiempo total",
+                                    valor = (tiempoTotalMinutos / 60).toString() + "h " +
+                                        (tiempoTotalMinutos % 60).toString() + "min",
+                                    icono = Icons.Default.AccessTime,
+                                    colorMetrica = Tiempo,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            TarjetaGraficaRendimiento(
-                                puntos = puntosGrupo,
-                                titulo = "RENDIMIENTO DEL GRUPO",
-                                sinDatos = grupoSinDatos,
-                                leyenda = leyendaGraficaGrupoTv
-                            )
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(300.dp)
+                            ) {
+                                TarjetaGraficaRendimiento(
+                                    puntos = puntosGrupo,
+                                    titulo = "RENDIMIENTO DEL GRUPO",
+                                    sinDatos = grupoSinDatos,
+                                    leyenda = leyendaGraficaGrupoTv
+                                )
+                            }
                         }
-                        BotonVolverAGruposTv(alVolver)
+                        item {
+                            BotonVolverAGruposTv(alVolver)
+                        }
                     }
                 }
 
@@ -352,15 +369,17 @@ fun PantallaDetalleGrupoTv(
                             Text("No hay miembros en este grupo.", color = OnSurfaceVariant)
                         }
                     } else {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            state = scrollEstadisticas,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
+                            item {
+                                Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
-                            ) {
+                                ) {
                                 SelectorMiembroTv(
                                     texto = "<",
                                     onClick = ::navegarMiembroAnterior,
@@ -392,12 +411,14 @@ fun PantallaDetalleGrupoTv(
                                     onClick = ::navegarMiembroSiguiente,
                                     focusRequester = focoSiguiente
                                 )
+                                }
                             }
 
-                            Row(
+                            item {
+                                Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
+                                ) {
                                 TarjetaMetricaDetalleTv(
                                     titulo = "Distancia",
                                     valor = String.format("%.1f km", distanciaMiembro),
@@ -426,13 +447,15 @@ fun PantallaDetalleGrupoTv(
                                     colorMetrica = Tiempo,
                                     modifier = Modifier.weight(1f)
                                 )
+                                }
                             }
 
-                            Box(
+                            item {
+                                Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f)
-                            ) {
+                                    .height(300.dp)
+                                ) {
                                 if (estaCargandoEstadisticas) {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
@@ -444,15 +467,21 @@ fun PantallaDetalleGrupoTv(
                                         )
                                     }
                                 } else {
-                                    TarjetaGraficaRendimiento(
-                                        puntos = puntosMiembro,
-                                        titulo = "RENDIMIENTO INDIVIDUAL",
-                                        sinDatos = miembroSinDatos,
-                                        leyenda = leyendaGraficaIndividualTv,
-                                        mensajeSinDatos = estadoUi.mensajeErrorEstadisticas
-                                            ?: "Sin actividad esta semana",
-                                        detalleSinDatos = "Selecciona otro miembro o vuelve a intentarlo."
-                                    )
+                                    // Reinicia la métrica visible al cambiar de miembro para
+                                    // que cada perfil comience mostrando sus estadísticas de
+                                    // distancia de la semana actual.
+                                    key(miembroSeleccionado.idUsuario) {
+                                        TarjetaGraficaRendimiento(
+                                            puntos = puntosMiembro,
+                                            titulo = "RENDIMIENTO INDIVIDUAL",
+                                            sinDatos = miembroSinDatos,
+                                            leyenda = leyendaGraficaIndividualTv,
+                                            mensajeSinDatos = estadoUi.mensajeErrorEstadisticas
+                                                ?: "Sin actividad esta semana",
+                                            detalleSinDatos = "Selecciona otro miembro o vuelve a intentarlo."
+                                        )
+                                    }
+                                }
                                 }
                             }
                         }
@@ -575,13 +604,15 @@ private fun DialogoConfirmacionGrupoTv(
 private val leyendaGraficaGrupoTv = listOf(
     ElementoLeyendaGrafica(Distancia, "Distancia grupal (km)"),
     ElementoLeyendaGrafica(Pasos, "Pasos grupales (miles)"),
-    ElementoLeyendaGrafica(Calorias, "Calorias grupales (kcal)")
+    ElementoLeyendaGrafica(Calorias, "Calorias grupales (kcal)"),
+    ElementoLeyendaGrafica(Tiempo, "Tiempo grupal")
 )
 
 private val leyendaGraficaIndividualTv = listOf(
     ElementoLeyendaGrafica(Distancia, "Distancia individual (km)"),
     ElementoLeyendaGrafica(Pasos, "Pasos individuales (miles)"),
-    ElementoLeyendaGrafica(Calorias, "Calorias individuales (kcal)")
+    ElementoLeyendaGrafica(Calorias, "Calorias individuales (kcal)"),
+    ElementoLeyendaGrafica(Tiempo, "Tiempo individual")
 )
 
 private val diasSemanaGraficaTv = listOf("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom")
@@ -593,6 +624,7 @@ private fun generarPuntosGraficaGrupoTv(
     val distanciaTotal = miembros.sumOf { it.distancia }
     val pasosTotal = miembros.sumOf { it.pasos }
     val caloriasTotal = miembros.sumOf { it.calorias }
+    val tiempoTotal = miembros.sumOf { it.tiempo }
 
     return diasSemanaGraficaTv.mapIndexed { indice, dia ->
         val proporcion = proporcionesSemanaGrupoTv[indice]
@@ -600,7 +632,8 @@ private fun generarPuntosGraficaGrupoTv(
             etiqueta = dia,
             distancia = distanciaTotal * proporcion,
             pasos = (pasosTotal * proporcion).roundToInt(),
-            calorias = (caloriasTotal * proporcion).roundToInt()
+            calorias = (caloriasTotal * proporcion).roundToInt(),
+            tiempo = (tiempoTotal * proporcion).roundToInt()
         )
     }
 }
@@ -613,7 +646,8 @@ private fun generarPuntosGraficaMiembroTv(
             etiqueta = punto.dia,
             distancia = punto.distancia,
             pasos = punto.pasos,
-            calorias = punto.calorias
+            calorias = punto.calorias,
+            tiempo = punto.tiempo
         )
     } ?: emptyList()
 }
@@ -656,7 +690,3 @@ private fun BotonVolverAGruposTv(alVolver: () -> Unit) {
         }
     }
 }
-
-
-
-

@@ -95,7 +95,7 @@ class GrupoTvViewModel : ViewModel() {
         }
     }
 
-    fun cargarEstadisticasMiembro(idGrupo: Int, idUsuario: Int) {
+    fun cargarEstadisticasMiembro(idUsuario: Int) {
         if (_estadoUi.value.estadisticasMiembro.containsKey(idUsuario)) return
 
         viewModelScope.launch {
@@ -104,17 +104,21 @@ class GrupoTvViewModel : ViewModel() {
                 mensajeErrorEstadisticas = null
             )
 
-            repositorio.getEstadisticasMiembro(idGrupo, idUsuario).fold(
+            repositorio.getEstadisticasMiembro(idUsuario).fold(
                 onSuccess = { estadisticas ->
+                    val estadoActual = _estadoUi.value
                     _estadoUi.value = _estadoUi.value.copy(
-                        estadisticasMiembro = _estadoUi.value.estadisticasMiembro + (idUsuario to estadisticas),
-                        miembroEstadisticasCargandoId = null,
+                        estadisticasMiembro = estadoActual.estadisticasMiembro + (idUsuario to estadisticas),
+                        miembroEstadisticasCargandoId = estadoActual.miembroEstadisticasCargandoId
+                            .takeUnless { it == idUsuario },
                         mensajeErrorEstadisticas = null
                     )
                 },
                 onFailure = { error ->
+                    val estadoActual = _estadoUi.value
                     _estadoUi.value = _estadoUi.value.copy(
-                        miembroEstadisticasCargandoId = null,
+                        miembroEstadisticasCargandoId = estadoActual.miembroEstadisticasCargandoId
+                            .takeUnless { it == idUsuario },
                         mensajeErrorEstadisticas = error.message ?: "No se pudieron cargar las estadisticas del miembro"
                     )
                 }

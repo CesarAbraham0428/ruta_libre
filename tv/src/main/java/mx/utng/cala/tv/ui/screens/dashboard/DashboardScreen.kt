@@ -738,7 +738,8 @@ fun mapperPuntosGrafico(
                 etiqueta = it.dia,
                 distancia = it.distancia,
                 pasos = it.pasos,
-                calorias = it.calorias
+                calorias = it.calorias,
+                tiempo = it.tiempo
             )
         } ?: emptyList()
     } else {
@@ -748,7 +749,8 @@ fun mapperPuntosGrafico(
                 etiqueta = it.semana.replace("Semana ", "Sem "),
                 distancia = it.distancia,
                 pasos = it.pasos,
-                calorias = it.calorias
+                calorias = it.calorias,
+                tiempo = it.tiempo
             )
         } ?: emptyList()
     }

@@ -440,7 +440,9 @@ router.get('/mes/:idUsuario', async (req, res) => {
               COALESCE(SUM(calorias), 0) AS cal_tot,
               COALESCE(SUM(tiempo), 0) AS tiempo_tot
        FROM entrenamiento
-       WHERE id_usuario = $1 AND fecha_inicio >= date_trunc('month', current_date)`,
+       WHERE id_usuario = $1
+         AND fecha_inicio >= date_trunc('month', current_date)
+         AND fecha_inicio < date_trunc('month', current_date) + interval '1 month'`,
       [idUsuario]
     );
 
@@ -450,34 +452,35 @@ router.get('/mes/:idUsuario', async (req, res) => {
     const consultaEntrenamientos = await db.query(
       `SELECT distancia, pasos, calorias, tiempo, fecha_inicio
        FROM entrenamiento
-       WHERE id_usuario = $1 AND fecha_inicio >= date_trunc('month', current_date)
+       WHERE id_usuario = $1
+         AND fecha_inicio >= date_trunc('month', current_date)
+         AND fecha_inicio < date_trunc('month', current_date) + interval '1 month'
        ORDER BY fecha_inicio ASC`,
       [idUsuario]
     );
 
-    // Calcular las semanas del mes actual
+    // Calcular cuatro semanas del mes actual, siempre de lunes a domingo.
     const obtenerSemanasDelMes = () => {
       const ahora = new Date();
       const anio = ahora.getFullYear();
       const mes = ahora.getMonth(); // 0-indexado
       const primerDia = new Date(anio, mes, 1);
-      const ultimoDia = new Date(anio, mes + 1, 0);
+      const diaSemanaPrimerDia = primerDia.getDay(); // Domingo = 0, lunes = 1
+      const diasDesdeLunes = diaSemanaPrimerDia === 0 ? 6 : diaSemanaPrimerDia - 1;
 
       const semanasLocal = [];
       let fechaActual = new Date(primerDia);
+      fechaActual.setDate(primerDia.getDate() - diasDesdeLunes);
+      fechaActual.setHours(0, 0, 0, 0);
       let indiceSemana = 1;
 
-      while (fechaActual <= ultimoDia) {
+      while (indiceSemana <= 4) {
         const inicioSemana = new Date(fechaActual);
         const diaSemana = fechaActual.getDay();
         // Encontrar cuántos días faltan para el domingo (7 - diaSemana, si diaSemana es 0 es domingo, entonces 0 días)
         const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana;
         let finSemana = new Date(fechaActual);
         finSemana.setDate(fechaActual.getDate() + diasHastaDomingo);
-
-        if (finSemana > ultimoDia) {
-          finSemana = new Date(ultimoDia);
-        }
 
         // Establecer hora de fin al final del día
         const finSemanaConHora = new Date(finSemana.getFullYear(), finSemana.getMonth(), finSemana.getDate(), 23, 59, 59, 999);
@@ -498,6 +501,7 @@ router.get('/mes/:idUsuario', async (req, res) => {
     };
 
     const listadoSemanas = obtenerSemanasDelMes();
+    const milisegundosPorSemana = 7 * 24 * 60 * 60 * 1000;
     const rendimientoSemanal = listadoSemanas.map(sem => ({
       semana: sem.nombre,
       distancia: 0.0,
@@ -509,16 +513,19 @@ router.get('/mes/:idUsuario', async (req, res) => {
     // Agrupar entrenamientos en las semanas
     for (const ent of consultaEntrenamientos.rows) {
       const fechaEnt = new Date(ent.fecha_inicio);
-      for (let i = 0; i < listadoSemanas.length; i++) {
-        const sem = listadoSemanas[i];
-        if (fechaEnt >= sem.inicio && fechaEnt <= sem.fin) {
-          rendimientoSemanal[i].distancia += parseFloat(ent.distancia);
-          rendimientoSemanal[i].pasos += parseInt(ent.pasos);
-          rendimientoSemanal[i].calorias += parseInt(ent.calorias);
-          rendimientoSemanal[i].tiempo += parseInt(ent.tiempo);
-          break;
-        }
-      }
+      const semanasDesdeElPrimerLunes = Math.floor(
+        (fechaEnt.getTime() - listadoSemanas[0].inicio.getTime()) / milisegundosPorSemana
+      );
+      // Conserva los días restantes del mes en Semana 4 para no perder actividad.
+      const indiceSemana = Math.min(
+        Math.max(semanasDesdeElPrimerLunes, 0),
+        rendimientoSemanal.length - 1
+      );
+
+      rendimientoSemanal[indiceSemana].distancia += parseFloat(ent.distancia);
+      rendimientoSemanal[indiceSemana].pasos += parseInt(ent.pasos);
+      rendimientoSemanal[indiceSemana].calorias += parseInt(ent.calorias);
+      rendimientoSemanal[indiceSemana].tiempo += parseInt(ent.tiempo);
     }
 
     // Redondear distancias a 2 decimales

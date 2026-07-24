@@ -70,12 +70,11 @@ class GrupoRepository {
         }
     }
 
-    suspend fun getEstadisticasMiembro(
-        idGrupo: Int,
-        idUsuario: Int
-    ): Result<DashboardSemanalResponse> {
+    suspend fun getEstadisticasMiembro(idUsuario: Int): Result<DashboardSemanalResponse> {
         return try {
-            val response = api.getEstadisticasMiembroGrupo(idGrupo, idUsuario)
+            // Las estadísticas individuales deben ser exactamente las mismas
+            // que aparecen en el dashboard del usuario.
+            val response = api.getDashboardSemanal(idUsuario)
             if (response.isSuccessful) {
                 response.body()?.let { Result.success(it) }
                     ?: Result.failure(Exception("La API no devolvio las estadisticas del miembro"))
