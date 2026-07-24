@@ -179,34 +179,6 @@ fun PerfilScreen(
 
                     Spacer(Modifier.height(32.dp))
 
-                    // Campo 1: Nombre de usuario (Solo Lectura)
-                    OutlinedTextField(
-                        value = estadoPerfil.nombreUsuario,
-                        onValueChange = {},
-                        label = { Text("Nombre de usuario (No editable)") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = OnSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        },
-                        readOnly = true,
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledBorderColor = Outline.copy(alpha = 0.3f),
-                            disabledTextColor = OnSurface.copy(alpha = 0.6f),
-                            disabledLabelColor = OnSurfaceVariant.copy(alpha = 0.5f),
-                            disabledContainerColor = SurfaceVariant.copy(alpha = 0.2f),
-                            disabledLeadingIconColor = OnSurfaceVariant.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
                     // Campo 2: Nombre (Editable)
                     OutlinedTextField(
                         value = nombreEditable,
@@ -280,7 +252,7 @@ fun PerfilScreen(
                             contrasenaEditable = it
                             perfilViewModel.limpiarError()
                         },
-                        label = { Text("Nueva contraseña (Opcional)") },
+                        label = { Text("Nueva contraseña") },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Lock,

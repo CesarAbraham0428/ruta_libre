@@ -127,7 +127,7 @@ El archivo [NavGraph.kt](file:///d:/02%20-%20Universidad/09%20-%20Noveno%20Cuatr
 - **Archivo:** [MetasScreen.kt](file:///d:/02%20-%20Universidad/09%20-%20Noveno%20Cuatrimestre/Desarrollo%20para%20dispositivos%20Inteligentes/unidad%201/aplicaciones/rutaLibre/app/src/main/java/mx/utng/cala/rutalibre/ui/screens/metas/MetasScreen.kt)
 - **ViewModel:** `MetasViewModel`, `AuthViewModel`
 - **Backend:** `GET /api/metas/usuario/{idUsuario}` y `DELETE /api/metas/{idMetas}`
-- **Descripción:** Muestra las metas de actividad del usuario (Pasos, Calorías, Distancia, Tiempo). Renderiza indicadores de progreso `LinearProgressIndicator` con colores específicos por tipo de métrica. Ofrece opciones para crear, editar o eliminar metas mediante diálogos de confirmación.
+- **Descripción:** Muestra las metas de actividad del usuario (Pasos, Calorías, Distancia, Tiempo) divididas en dos apartados mediante pestañas: "En Proceso" e "Historial" (metas terminadas). Las metas en proceso permiten ser editadas y eliminadas, mientras que las metas del historial solo se pueden eliminar. Renderiza indicadores de progreso `LinearProgressIndicator` con colores específicos por tipo de métrica. Ofrece diálogos de confirmación para las acciones correspondientes.
 
 ### 9. CrearMetaScreen
 - **Archivo:** [CrearMetaScreen.kt](file:///d:/02%20-%20Universidad/09%20-%20Noveno%20Cuatrimestre/Desarrollo%20para%20dispositivos%20Inteligentes/unidad%201/aplicaciones/rutaLibre/app/src/main/java/mx/utng/cala/rutalibre/ui/screens/metas/CrearMetaScreen.kt)
