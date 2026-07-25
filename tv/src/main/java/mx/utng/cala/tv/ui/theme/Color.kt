@@ -29,3 +29,4 @@ val Outline = Color(0xFF2A3B55)
 
 // States
 val Error = Color(0xFFFF5252)
+val Neutral = Color(0xFFFFB300)

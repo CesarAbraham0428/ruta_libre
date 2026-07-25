@@ -14,7 +14,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -52,9 +55,29 @@ fun GruposTvScreen(
     var grupoSeleccionadoNombre by remember { mutableStateOf("") }
     var grupoSeleccionadoCodigo by remember { mutableStateOf("") }
     var grupoSeleccionadoDescripcion by remember { mutableStateOf<String?>(null) }
+    var grupoSeleccionadoIdCreador by remember { mutableStateOf<Int?>(null) }
+
+    val solicitadorEnfoquePrincipal = remember { FocusRequester() }
+    val solicitadorEnfoqueCrear = remember { FocusRequester() }
+    val solicitadorEnfoqueUnirse = remember { FocusRequester() }
+    val solicitadorEnfoqueDetalle = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         grupoViewModel.cargarGruposDeUsuario(idUsuario)
+    }
+
+    LaunchedEffect(vistaActual) {
+        delay(100)
+        try {
+            when (vistaActual) {
+                VistaGruposTv.PRINCIPAL -> solicitadorEnfoquePrincipal.requestFocus()
+                VistaGruposTv.CREAR -> solicitadorEnfoqueCrear.requestFocus()
+                VistaGruposTv.UNIRSE -> solicitadorEnfoqueUnirse.requestFocus()
+                VistaGruposTv.DETALLE -> solicitadorEnfoqueDetalle.requestFocus()
+            }
+        } catch (e: Exception) {
+            // Ignorar si el elemento enfocado aún no se adjunta
+        }
     }
 
     Row(
@@ -80,13 +103,15 @@ fun GruposTvScreen(
                 VistaGruposTv.PRINCIPAL -> {
                     PantallaPrincipalGruposTv(
                         estadoUi = estadoUi,
+                        solicitadorEnfoque = solicitadorEnfoquePrincipal,
                         alSeleccionarCrear = { vistaActual = VistaGruposTv.CREAR },
                         alSeleccionarUnirse = { vistaActual = VistaGruposTv.UNIRSE },
-                        alSeleccionarGrupo = { id, nombre, codigo, descripcion ->
+                        alSeleccionarGrupo = { id, nombre, codigo, descripcion, idCreador ->
                             grupoSeleccionadoId = id
                             grupoSeleccionadoNombre = nombre
                             grupoSeleccionadoCodigo = codigo
                             grupoSeleccionadoDescripcion = descripcion
+                            grupoSeleccionadoIdCreador = idCreador
                             grupoViewModel.cargarDetalleGrupo(id)
                             vistaActual = VistaGruposTv.DETALLE
                         }
@@ -95,6 +120,7 @@ fun GruposTvScreen(
                 VistaGruposTv.CREAR -> {
                     PantallaCrearGrupoTv(
                         estaCargando = estadoUi.estaCargando,
+                        solicitadorEnfoque = solicitadorEnfoqueCrear,
                         alGuardar = { nombre, descripcion ->
                             grupoViewModel.crearNuevoGrupo(nombre, descripcion, idUsuario)
                             vistaActual = VistaGruposTv.PRINCIPAL
@@ -107,6 +133,7 @@ fun GruposTvScreen(
                 VistaGruposTv.UNIRSE -> {
                     PantallaUnirseGrupoTv(
                         estaCargando = estadoUi.estaCargando,
+                        solicitadorEnfoque = solicitadorEnfoqueUnirse,
                         alUnirse = { codigo ->
                             grupoViewModel.unirseAGrupoConCodigo(idUsuario, codigo)
                             vistaActual = VistaGruposTv.PRINCIPAL
@@ -118,14 +145,27 @@ fun GruposTvScreen(
                 }
                 VistaGruposTv.DETALLE -> {
                     PantallaDetalleGrupoTv(
+                        idGrupo = grupoSeleccionadoId ?: 0,
                         idUsuarioActual = idUsuario,
+                        idCreadorGrupo = grupoSeleccionadoIdCreador,
                         nombreGrupo = grupoSeleccionadoNombre,
                         codigoGrupo = grupoSeleccionadoCodigo,
                         descripcionGrupo = grupoSeleccionadoDescripcion,
                         estadoUi = estadoUi,
+                        solicitadorEnfoque = solicitadorEnfoqueDetalle,
+                        alCargarEstadisticasMiembro = { idMiembro ->
+                            grupoViewModel.cargarEstadisticasMiembro(idMiembro)
+                        },
                         alSalirGrupo = {
                             grupoSeleccionadoId?.let { idGrupo ->
                                 grupoViewModel.salirDeGrupo(idUsuario, idGrupo) {
+                                    vistaActual = VistaGruposTv.PRINCIPAL
+                                }
+                            }
+                        },
+                        alEliminarGrupo = {
+                            grupoSeleccionadoId?.let { idGrupo ->
+                                grupoViewModel.eliminarGrupo(idUsuario, idGrupo) {
                                     vistaActual = VistaGruposTv.PRINCIPAL
                                 }
                             }
@@ -144,9 +184,10 @@ fun GruposTvScreen(
 @Composable
 fun PantallaPrincipalGruposTv(
     estadoUi: EstadoUiGrupoTv,
+    solicitadorEnfoque: FocusRequester,
     alSeleccionarCrear: () -> Unit,
     alSeleccionarUnirse: () -> Unit,
-    alSeleccionarGrupo: (Int, String, String, String?) -> Unit
+    alSeleccionarGrupo: (Int, String, String, String?, Int?) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -172,7 +213,8 @@ fun PantallaPrincipalGruposTv(
                     titulo = "Unirse a un grupo",
                     descripcion = "Unete a un grupo mediante un código de grupo",
                     vectorIcono = Icons.Default.Groups,
-                    alHacerClick = alSeleccionarUnirse
+                    alHacerClick = alSeleccionarUnirse,
+                    modifier = Modifier.focusRequester(solicitadorEnfoque)
                 )
 
                 TarjetaAccionGrupoTv(
@@ -236,7 +278,7 @@ fun PantallaPrincipalGruposTv(
                                 descripcion = grupo.descripcion,
                                 codigo = grupo.codigo,
                                 alHacerClick = {
-                                    alSeleccionarGrupo(grupo.idGrupo, grupo.nombre, grupo.codigo, grupo.descripcion)
+                                    alSeleccionarGrupo(grupo.idGrupo, grupo.nombre, grupo.codigo, grupo.descripcion, grupo.idCreador)
                                 }
                             )
                         }
@@ -253,13 +295,14 @@ fun TarjetaAccionGrupoTv(
     titulo: String,
     descripcion: String,
     vectorIcono: ImageVector,
-    alHacerClick: () -> Unit
+    alHacerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var tieneFoco by remember { mutableStateOf(false) }
 
     Surface(
         onClick = alHacerClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(110.dp)
             .onFocusChanged { tieneFoco = it.isFocused },
@@ -269,7 +312,7 @@ fun TarjetaAccionGrupoTv(
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f),
             pressedContainerColor = PrimaryContainer
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Primary),
@@ -352,7 +395,7 @@ fun TarjetaGrupoTv(
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f),
             pressedContainerColor = PrimaryContainer
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Secondary),
@@ -431,6 +474,7 @@ fun TarjetaGrupoTv(
 @Composable
 fun PantallaCrearGrupoTv(
     estaCargando: Boolean,
+    solicitadorEnfoque: FocusRequester,
     alGuardar: (String, String?) -> Unit,
     alVolver: () -> Unit
 ) {
@@ -511,7 +555,9 @@ fun PantallaCrearGrupoTv(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(solicitadorEnfoque)
                     )
                 }
 
@@ -549,9 +595,12 @@ fun PantallaCrearGrupoTv(
                     },
                     enabled = nombre.isNotBlank() && !estaCargando,
                     colors = ButtonDefaults.colors(
-                        containerColor = Primary,
-                        contentColor = Color.Black
+                        containerColor = PrimaryContainer,
+                        contentColor = Color.White,
+                        focusedContainerColor = Primary,
+                        focusedContentColor = Color.Black
                     ),
+                    scale = ButtonDefaults.scale(focusedScale = 1.0f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -574,7 +623,7 @@ fun PantallaCrearGrupoTv(
                 containerColor = SurfaceVariant,
                 focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
             ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -603,10 +652,12 @@ fun PantallaCrearGrupoTv(
 @Composable
 fun PantallaUnirseGrupoTv(
     estaCargando: Boolean,
+    solicitadorEnfoque: FocusRequester,
     alUnirse: (String) -> Unit,
     alVolver: () -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
+    var botonVolverEnfocado by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -614,13 +665,27 @@ fun PantallaUnirseGrupoTv(
             .padding(horizontal = 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = alVolver) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+            Surface(
+                onClick = alVolver,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused },
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = SurfaceVariant,
+                    focusedContainerColor = Primary,
+                    pressedContainerColor = PrimaryContainer
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = if (botonVolverEnfocado) Color.Black else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -690,7 +755,9 @@ fun PantallaUnirseGrupoTv(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(solicitadorEnfoque)
                     )
                 }
 
@@ -704,9 +771,12 @@ fun PantallaUnirseGrupoTv(
                     },
                     enabled = codigo.isNotBlank() && !estaCargando,
                     colors = ButtonDefaults.colors(
-                        containerColor = Primary,
-                        contentColor = Color.Black
+                        containerColor = PrimaryContainer,
+                        contentColor = Color.White,
+                        focusedContainerColor = Primary,
+                        focusedContentColor = Color.Black
                     ),
+                    scale = ButtonDefaults.scale(focusedScale = 1.0f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -714,15 +784,6 @@ fun PantallaUnirseGrupoTv(
                         text = "Confirmar y Unirse",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium
-                    )
-                }
-
-                TextButton(onClick = alVolver) {
-                    Text(
-                        text = "Volver",
-                        color = Primary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -738,7 +799,7 @@ fun PantallaUnirseGrupoTv(
                 containerColor = SurfaceVariant,
                 focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
             ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -765,23 +826,30 @@ fun PantallaUnirseGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun PantallaDetalleGrupoTv(
+fun PantallaDetalleGrupoTvLegacy(
     idUsuarioActual: Int,
+    idCreadorGrupo: Int?,
     nombreGrupo: String,
     codigoGrupo: String,
     descripcionGrupo: String?,
     estadoUi: EstadoUiGrupoTv,
+    solicitadorEnfoque: FocusRequester,
     alSalirGrupo: () -> Unit,
+    alEliminarGrupo: () -> Unit,
     alVolver: () -> Unit
 ) {
     var pestanaSeleccionada by remember { mutableStateOf(0) }
     var mostrarConfirmarSalir by remember { mutableStateOf(false) }
+    var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
+    var botonVolverEnfocado by remember { mutableStateOf(false) }
 
     val miembros = estadoUi.listaMiembros
     val distanciaTotal = miembros.sumOf { it.distancia }
     val caloriasTotal = miembros.sumOf { it.calorias }
     val tiempoTotalSegundos = miembros.sumOf { it.tiempo }
     val tiempoTotalMinutos = tiempoTotalSegundos / 60
+
+    val esDueño = idUsuarioActual == idCreadorGrupo
 
     Column(
         modifier = Modifier
@@ -792,13 +860,28 @@ fun PantallaDetalleGrupoTv(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(onClick = alVolver) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Volver",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+            Surface(
+                onClick = alVolver,
+                modifier = Modifier
+                    .size(40.dp)
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused }
+                    .focusRequester(solicitadorEnfoque),
+                shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = SurfaceVariant,
+                    focusedContainerColor = Primary,
+                    pressedContainerColor = PrimaryContainer
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = if (botonVolverEnfocado) Color.Black else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -810,20 +893,30 @@ fun PantallaDetalleGrupoTv(
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { mostrarConfirmarSalir = true },
+                onClick = { 
+                    if (esDueño) {
+                        mostrarConfirmarEliminar = true
+                    } else {
+                        mostrarConfirmarSalir = true
+                    }
+                },
                 colors = ButtonDefaults.colors(
                     containerColor = Error,
                     contentColor = Color.White
                 ),
+                scale = ButtonDefaults.scale(focusedScale = 1.0f),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
             ) {
                 Icon(
-                    imageVector = Icons.Default.ExitToApp,
+                    imageVector = if (esDueño) Icons.Default.Delete else Icons.Default.ExitToApp,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Salir del grupo", fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (esDueño) "Eliminar grupo" else "Salir del grupo", 
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -880,7 +973,16 @@ fun PantallaDetalleGrupoTv(
         // Pestañas (TabRow de TV Material 3)
         TabRow(
             selectedTabIndex = pestanaSeleccionada,
-            modifier = Modifier.fillMaxWidth().background(Background)
+            modifier = Modifier.fillMaxWidth().background(Background),
+            indicator = { tabPositions ->
+                if (pestanaSeleccionada < tabPositions.size) {
+                    TabRowDefaults.PillIndicator(
+                        currentTabPosition = tabPositions[pestanaSeleccionada],
+                        activeColor = PrimaryContainer,
+                        inactiveColor = Color.Transparent
+                    )
+                }
+            }
         ) {
             Tab(
                 selected = pestanaSeleccionada == 0,
@@ -948,30 +1050,7 @@ fun PantallaDetalleGrupoTv(
                     }
 
                     Spacer(modifier = Modifier.weight(1f))
-
-                    Button(
-                        onClick = alVolver,
-                        colors = ButtonDefaults.colors(
-                            containerColor = PrimaryContainer,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = null,
-                                tint = Primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unirse to otro grupo", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    // Botón 'Unirse a otro grupo' eliminado
                 }
             } else {
                 Column(
@@ -1011,31 +1090,7 @@ fun PantallaDetalleGrupoTv(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = alVolver,
-                        colors = ButtonDefaults.colors(
-                            containerColor = PrimaryContainer,
-                            contentColor = Color.White
-                        ),
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = null,
-                                tint = Primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Unirse a otro grupo", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    // Botón 'Unirse a otro grupo' eliminado
                 }
             }
         }
@@ -1074,6 +1129,47 @@ fun PantallaDetalleGrupoTv(
             dismissButton = {
                 androidx.compose.material3.OutlinedButton(
                     onClick = { mostrarConfirmarSalir = false },
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Text("CANCELAR", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (mostrarConfirmarEliminar) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { mostrarConfirmarEliminar = false },
+            containerColor = SurfaceVariant,
+            title = {
+                Text(
+                    text = "Eliminar grupo",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Quieres eliminar el grupo?  (el grupo se eliminara junto con todos los miembros)",
+                    color = OnSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        mostrarConfirmarEliminar = false
+                        alEliminarGrupo()
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Error)
+                ) {
+                    Text("ELIMINAR GRUPO", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { mostrarConfirmarEliminar = false },
                     colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
                 ) {
                     Text("CANCELAR", fontWeight = FontWeight.Bold)
@@ -1147,7 +1243,7 @@ fun FilaMiembroGrupoTv(
             containerColor = SurfaceVariant,
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Primary),

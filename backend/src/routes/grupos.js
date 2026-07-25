@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+const DAY_MAP = {
+  1: 'Lun',
+  2: 'Mar',
+  3: 'Mie',
+  4: 'Jue',
+  5: 'Vie',
+  6: 'Sab',
+  7: 'Dom'
+};
+
 // Generador de código único de 6 caracteres
 function generateGroupCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -14,12 +24,15 @@ function generateGroupCode() {
 
 // POST /api/grupos (Crear grupo)
 router.post('/', async (req, res) => {
-  const { nombre, descripcion, idUsuario } = req.body;
+  const idUsuarioRaw = req.body.idUsuario ?? req.body.id_usuario ?? req.body.idCreador ?? req.body.id_creador;
+  const idUsuario = idUsuarioRaw !== undefined && idUsuarioRaw !== null ? parseInt(idUsuarioRaw, 10) : undefined;
+  const { nombre, descripcion } = req.body;
+  
   if (!nombre) {
     return res.status(400).json({ error: 'El nombre del grupo es obligatorio' });
   }
 
-  if (idUsuario !== undefined && (!Number.isInteger(idUsuario) || idUsuario <= 0)) {
+  if (idUsuario !== undefined && (isNaN(idUsuario) || !Number.isInteger(idUsuario) || idUsuario <= 0)) {
     return res.status(400).json({ error: 'ID de usuario no válido' });
   }
 
@@ -32,8 +45,8 @@ router.post('/', async (req, res) => {
     try {
       await client.query('BEGIN');
       const result = await client.query(
-        'INSERT INTO grupo (nombre, codigo, descripcion) VALUES ($1, $2, $3) RETURNING id_grupo, nombre, codigo, descripcion',
-        [nombre, code, descripcion]
+        'INSERT INTO grupo (nombre, codigo, descripcion, id_creador) VALUES ($1, $2, $3, $4) RETURNING id_grupo, nombre, codigo, descripcion, id_creador',
+        [nombre, code, descripcion, idUsuario !== undefined ? idUsuario : null]
       );
       const grupo = result.rows[0];
 
@@ -51,7 +64,8 @@ router.post('/', async (req, res) => {
         idGrupo: grupo.id_grupo,
         nombre: grupo.nombre,
         codigo: grupo.codigo,
-        descripcion: grupo.descripcion
+        descripcion: grupo.descripcion,
+        idCreador: grupo.id_creador
       });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
@@ -71,9 +85,11 @@ router.post('/', async (req, res) => {
 
 // POST /api/grupos/unirse (Unirse a grupo)
 router.post('/unirse', async (req, res) => {
-  const { idUsuario, codigo } = req.body;
-  if (!idUsuario || !codigo) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  const idUsuarioRaw = req.body.idUsuario ?? req.body.id_usuario ?? req.body.idCreador ?? req.body.id_creador;
+  const idUsuario = idUsuarioRaw !== undefined && idUsuarioRaw !== null ? parseInt(idUsuarioRaw, 10) : undefined;
+  const { codigo } = req.body;
+  if (!idUsuario || !codigo || isNaN(idUsuario)) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios o son inválidos' });
   }
 
   try {
@@ -137,7 +153,7 @@ router.get('/usuario/:idUsuario', async (req, res) => {
 
   try {
     const result = await db.query(
-      `SELECT g.id_grupo, g.nombre, g.codigo, g.descripcion 
+      `SELECT g.id_grupo, g.nombre, g.codigo, g.descripcion, g.id_creador 
        FROM grupo g 
        JOIN usuario_grupo ug ON g.id_grupo = ug.id_grupo 
        WHERE ug.id_usuario = $1`,
@@ -148,7 +164,8 @@ router.get('/usuario/:idUsuario', async (req, res) => {
       idGrupo: grupo.id_grupo,
       nombre: grupo.nombre,
       codigo: grupo.codigo,
-      descripcion: grupo.descripcion
+      descripcion: grupo.descripcion,
+      idCreador: grupo.id_creador
     }));
 
     res.json(grupos);
@@ -203,6 +220,87 @@ router.get('/:idGrupo/miembros', async (req, res) => {
   }
 });
 
+// GET /api/grupos/:idGrupo/miembros/:idUsuario/estadisticas
+// Estadisticas semanales de un miembro que pertenece al grupo.
+router.get('/:idGrupo/miembros/:idUsuario/estadisticas', async (req, res) => {
+  const idGrupo = parseInt(req.params.idGrupo, 10);
+  const idUsuario = parseInt(req.params.idUsuario, 10);
+
+  if (!Number.isInteger(idGrupo) || idGrupo <= 0 || !Number.isInteger(idUsuario) || idUsuario <= 0) {
+    return res.status(400).json({ error: 'ID de grupo o usuario no valido' });
+  }
+
+  try {
+    const membershipResult = await db.query(
+      'SELECT 1 FROM usuario_grupo WHERE id_grupo = $1 AND id_usuario = $2',
+      [idGrupo, idUsuario]
+    );
+
+    if (membershipResult.rows.length === 0) {
+      return res.status(404).json({ error: 'El usuario no pertenece al grupo' });
+    }
+
+    const [totalResult, dailyResult] = await Promise.all([
+      db.query(
+        `SELECT COALESCE(SUM(distancia), 0) AS distancia_total,
+                COALESCE(SUM(pasos), 0) AS pasos_totales,
+                COALESCE(SUM(calorias), 0) AS calorias_totales,
+                COALESCE(SUM(tiempo), 0) AS tiempo_total
+         FROM entrenamiento
+         WHERE id_usuario = $1
+           AND fecha_inicio >= date_trunc('week', current_date)`,
+        [idUsuario]
+      ),
+      db.query(
+        `SELECT EXTRACT(ISODOW FROM fecha_inicio) AS dia_num,
+                COALESCE(SUM(distancia), 0) AS distancia,
+                COALESCE(SUM(pasos), 0) AS pasos,
+                COALESCE(SUM(calorias), 0) AS calorias,
+                COALESCE(SUM(tiempo), 0) AS tiempo
+         FROM entrenamiento
+         WHERE id_usuario = $1
+           AND fecha_inicio >= date_trunc('week', current_date)
+         GROUP BY EXTRACT(ISODOW FROM fecha_inicio)
+         ORDER BY dia_num`,
+        [idUsuario]
+      )
+    ]);
+
+    const totals = totalResult.rows[0];
+    const rendimientoDiario = Array.from({ length: 7 }, (_, indice) => ({
+      dia: DAY_MAP[indice + 1],
+      distancia: 0.0,
+      pasos: 0,
+      calorias: 0,
+      tiempo: 0
+    }));
+
+    for (const row of dailyResult.rows) {
+      const indice = parseInt(row.dia_num, 10) - 1;
+      if (indice >= 0 && indice < rendimientoDiario.length) {
+        rendimientoDiario[indice] = {
+          dia: DAY_MAP[indice + 1],
+          distancia: parseFloat(row.distancia),
+          pasos: parseInt(row.pasos, 10),
+          calorias: parseInt(row.calorias, 10),
+          tiempo: parseInt(row.tiempo, 10)
+        };
+      }
+    }
+
+    res.json({
+      distanciaTotal: parseFloat(totals.distancia_total),
+      pasosTotales: parseInt(totals.pasos_totales, 10),
+      caloriasTotales: parseInt(totals.calorias_totales, 10),
+      tiempoTotal: parseInt(totals.tiempo_total, 10),
+      rendimientoDiario
+    });
+  } catch (error) {
+    console.error('Error en estadisticas semanales del miembro:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/grupos/:idGrupo/ranking (Miembros ordenados por distancia semanal)
 router.get('/:idGrupo/ranking', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo);
@@ -244,6 +342,42 @@ router.get('/:idGrupo/ranking', async (req, res) => {
     res.json({ miembros });
   } catch (error) {
     console.error('Error en /grupos/:idGrupo/ranking:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/grupos/:idGrupo (Eliminar grupo)
+router.delete('/:idGrupo', async (req, res) => {
+  const idGrupo = parseInt(req.params.idGrupo);
+  const idUsuarioRaw = req.query.idUsuario ?? req.body.idUsuario ?? req.query.id_usuario ?? req.body.id_usuario ?? req.query.idCreador ?? req.body.idCreador;
+  const idUsuario = idUsuarioRaw !== undefined && idUsuarioRaw !== null ? parseInt(idUsuarioRaw, 10) : NaN;
+
+  if (isNaN(idGrupo) || isNaN(idUsuario)) {
+    return res.status(400).json({ error: 'ID de grupo o usuario no válido' });
+  }
+
+  try {
+    // Verificar si el usuario es el creador del grupo
+    const groupResult = await db.query(
+      'SELECT id_creador FROM grupo WHERE id_grupo = $1',
+      [idGrupo]
+    );
+
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado' });
+    }
+
+    const idCreador = groupResult.rows[0].id_creador;
+    if (idCreador !== idUsuario) {
+      return res.status(403).json({ error: 'No tienes permisos para eliminar este grupo' });
+    }
+
+    // Eliminar el grupo (las tablas relacionadas tienen ON DELETE CASCADE)
+    await db.query('DELETE FROM grupo WHERE id_grupo = $1', [idGrupo]);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error en DELETE /grupos/:idGrupo:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

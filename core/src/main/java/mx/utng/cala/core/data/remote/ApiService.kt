@@ -82,6 +82,12 @@ interface ApiService {
     @GET("grupos/{idGrupo}/miembros")
     suspend fun getMiembrosGrupo(@Path("idGrupo") idGrupo: Int): Response<List<MiembroGrupoResponse>>
 
+    @GET("grupos/{idGrupo}/miembros/{idUsuario}/estadisticas")
+    suspend fun getEstadisticasMiembroGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Path("idUsuario") idUsuario: Int
+    ): Response<DashboardSemanalResponse>
+
     @GET("grupos/{idGrupo}/ranking")
     suspend fun getRankingGrupo(@Path("idGrupo") idGrupo: Int): Response<RankingResponse>
 
@@ -89,6 +95,12 @@ interface ApiService {
     suspend fun salirDeGrupo(
         @Path("idGrupo") idGrupo: Int,
         @Path("idUsuario") idUsuario: Int
+    ): Response<Unit>
+
+    @DELETE("grupos/{idGrupo}")
+    suspend fun eliminarGrupo(
+        @Path("idGrupo") idGrupo: Int,
+        @Query("idUsuario") idUsuario: Int
     ): Response<Unit>
 
     @GET("notificaciones/usuario/{idUsuario}")

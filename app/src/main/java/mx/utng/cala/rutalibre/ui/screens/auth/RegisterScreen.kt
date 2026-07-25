@@ -58,6 +58,7 @@ fun RegisterScreen(
     val hasMinLength = password.length >= 8
     val hasLetter = password.any { it.isLetter() }
     val hasNumber = password.any { it.isDigit() }
+    val contrasenaValida = hasMinLength && hasLetter && hasNumber
 
     LaunchedEffect(uiState.registrationSuccess) {
         if (uiState.registrationSuccess) {
@@ -225,7 +226,7 @@ fun RegisterScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         focusManager.clearFocus()
-                        if (nombre.isNotBlank() && usuario.isNotBlank() && password.length >= 8) {
+                        if (nombre.isNotBlank() && usuario.isNotBlank() && contrasenaValida) {
                             authViewModel.register(nombre, usuario, password)
                         }
                     }
@@ -280,7 +281,7 @@ fun RegisterScreen(
                     focusManager.clearFocus()
                     authViewModel.register(nombre, usuario, password)
                 },
-                enabled = !uiState.isLoading && nombre.isNotBlank() && usuario.isNotBlank() && password.length >= 8,
+                enabled = !uiState.isLoading && nombre.isNotBlank() && usuario.isNotBlank() && contrasenaValida,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primary,
                     contentColor = Color.Black,

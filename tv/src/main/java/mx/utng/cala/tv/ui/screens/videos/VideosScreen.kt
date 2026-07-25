@@ -81,6 +81,9 @@ fun VideosScreen(
     }
     var textoBusqueda by remember { mutableStateOf("") }
 
+    val solicitadorEnfoquePrincipalVideos = remember { FocusRequester() }
+    val solicitadorEnfoqueFiltrosVideos = remember { FocusRequester() }
+
     BackHandler(enabled = estadoUi.videoSeleccionado != null) {
         viewModel.seleccionarVideo(null)
     }
@@ -93,6 +96,19 @@ fun VideosScreen(
             VistaVideosTv.FILTROS
         } else {
             VistaVideosTv.PRINCIPAL
+        }
+    }
+
+    LaunchedEffect(vistaActual) {
+        kotlinx.coroutines.delay(100)
+        try {
+            when (vistaActual) {
+                VistaVideosTv.PRINCIPAL -> solicitadorEnfoquePrincipalVideos.requestFocus()
+                VistaVideosTv.FILTROS -> solicitadorEnfoqueFiltrosVideos.requestFocus()
+                VistaVideosTv.DETALLE -> { /* Manejado por el reproductor */ }
+            }
+        } catch (e: Exception) {
+            // Ignorar si el nodo no está listo
         }
     }
 
@@ -124,6 +140,7 @@ fun VideosScreen(
                     PantallaListaPrincipalVideos(
                         estadoUi = estadoUi,
                         textoBusqueda = textoBusqueda,
+                        solicitadorEnfoque = solicitadorEnfoquePrincipalVideos,
                         alCambiarBusqueda = {
                             textoBusqueda = it
                             viewModel.buscarPorTexto(it)
@@ -140,6 +157,7 @@ fun VideosScreen(
                     PantallaFiltrosDetalladosVideos(
                         estadoUi = estadoUi,
                         listaMarcados = listaMarcados,
+                        solicitadorEnfoque = solicitadorEnfoqueFiltrosVideos,
                         alVolver = {
                             viewModel.cambiarFiltro("Videos")
                         },
@@ -182,6 +200,7 @@ fun VideosScreen(
 fun PantallaListaPrincipalVideos(
     estadoUi: EstadoUiVideos,
     textoBusqueda: String,
+    solicitadorEnfoque: FocusRequester,
     alCambiarBusqueda: (String) -> Unit,
     alSeleccionarFiltro: (String) -> Unit,
     alSeleccionarVideo: (VideoRutaLibre) -> Unit
@@ -242,7 +261,8 @@ fun PantallaListaPrincipalVideos(
                     texto = "Videos",
                     icono = Icons.Default.PlayArrow,
                     seleccionado = estadoUi.filtroActivo == "Videos",
-                    alHacerClick = { alSeleccionarFiltro("Videos") }
+                    alHacerClick = { alSeleccionarFiltro("Videos") },
+                    modifier = Modifier.focusRequester(solicitadorEnfoque)
                 )
             }
             item {
@@ -341,6 +361,7 @@ fun PantallaListaPrincipalVideos(
 fun PantallaFiltrosDetalladosVideos(
     estadoUi: EstadoUiVideos,
     listaMarcados: Set<String>,
+    solicitadorEnfoque: FocusRequester,
     alVolver: () -> Unit,
     alSeleccionarSubfiltro: (String) -> Unit,
     alAlternarMarcado: (String) -> Unit,
@@ -357,14 +378,15 @@ fun PantallaFiltrosDetalladosVideos(
                 onClick = alVolver,
                 modifier = Modifier
                     .size(40.dp)
-                    .onFocusChanged { botonVolverEnfocado = it.isFocused },
+                    .onFocusChanged { botonVolverEnfocado = it.isFocused }
+                    .focusRequester(solicitadorEnfoque),
                 shape = ClickableSurfaceDefaults.shape(shape = CircleShape),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = SurfaceVariant,
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
@@ -407,7 +429,7 @@ fun PantallaFiltrosDetalladosVideos(
                         focusedContainerColor = if (seleccionado) Primary.copy(alpha = 0.8f) else SurfaceVariant.copy(alpha = 0.8f),
                         pressedContainerColor = PrimaryContainer
                     ),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
                 ) {
                     Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                         Text(
@@ -489,7 +511,7 @@ fun PantallaDetalleReproductorVideo(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -711,13 +733,14 @@ fun TarjetaFiltroIcono(
     texto: String,
     icono: ImageVector,
     seleccionado: Boolean,
-    alHacerClick: () -> Unit
+    alHacerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var tieneFoco by remember { mutableStateOf(false) }
 
     Surface(
         onClick = alHacerClick,
-        modifier = Modifier
+        modifier = modifier
             .width(160.dp)
             .height(50.dp)
             .onFocusChanged { tieneFoco = it.isFocused },
@@ -733,7 +756,7 @@ fun TarjetaFiltroIcono(
                 shape = RoundedCornerShape(12.dp)
             )
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier
@@ -791,7 +814,7 @@ fun TarjetaVideoListado(
                 shape = RoundedCornerShape(16.dp)
             )
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier

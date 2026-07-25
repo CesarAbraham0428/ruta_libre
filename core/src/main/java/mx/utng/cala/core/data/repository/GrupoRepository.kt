@@ -3,6 +3,7 @@ package mx.utng.cala.core.data.repository
 import com.google.gson.Gson
 import mx.utng.cala.core.data.dto.request.CrearGrupoRequest
 import mx.utng.cala.core.data.dto.request.UnirseGrupoRequest
+import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
 import mx.utng.cala.core.data.dto.response.GrupoResponse
 import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 import mx.utng.cala.core.data.dto.response.RankingResponse
@@ -69,6 +70,22 @@ class GrupoRepository {
         }
     }
 
+    suspend fun getEstadisticasMiembro(idUsuario: Int): Result<DashboardSemanalResponse> {
+        return try {
+            // Las estadísticas individuales deben ser exactamente las mismas
+            // que aparecen en el dashboard del usuario.
+            val response = api.getDashboardSemanal(idUsuario)
+            if (response.isSuccessful) {
+                response.body()?.let { Result.success(it) }
+                    ?: Result.failure(Exception("La API no devolvio las estadisticas del miembro"))
+            } else {
+                Result.failure(Exception(errorMessage(response, "Error al obtener estadisticas del miembro")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getRanking(idGrupo: Int): Result<RankingResponse> {
         return try {
             val response = api.getRankingGrupo(idGrupo)
@@ -86,6 +103,16 @@ class GrupoRepository {
             val response = api.salirDeGrupo(idGrupo, idUsuario)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception(errorMessage(response, "Error al salir del grupo")))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun eliminarGrupo(idGrupo: Int, idUsuario: Int): Result<Unit> {
+        return try {
+            val response = api.eliminarGrupo(idGrupo, idUsuario)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception(errorMessage(response, "Error al eliminar el grupo")))
         } catch (e: Exception) {
             Result.failure(e)
         }

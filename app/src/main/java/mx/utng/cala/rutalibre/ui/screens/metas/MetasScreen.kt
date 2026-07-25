@@ -47,12 +47,17 @@ fun MetasScreen(
     val metasState by metasViewModel.uiState.collectAsState()
 
     var metaToDelete by remember { mutableStateOf<MetaResponse?>(null) }
+    var pestañaSeleccionada by remember { mutableStateOf(0) }
+    val titulosPestañas = listOf("En Proceso", "Historial")
 
     LaunchedEffect(Unit) {
         authState.idUsuario?.let { id ->
             metasViewModel.cargarMetas(id)
         }
     }
+
+    val metasEnProceso = metasState.metas.filter { !it.terminada }
+    val metasHistorial = metasState.metas.filter { it.terminada }
 
     Scaffold(
         topBar = {
@@ -86,38 +91,70 @@ fun MetasScreen(
         },
         containerColor = Background
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (metasState.isLoading && metasState.metas.isEmpty()) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Primary
-                )
-            } else if (metasState.metas.isEmpty()) {
-                Text(
-                    text = "Aún no tienes metas. ¡Crea una!",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = OnSurfaceVariant
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(metasState.metas) { meta ->
-                        MetaCard(
-                            meta = meta,
-                            onEdit = {
-                                navController.navigate(Routes.editarMeta(meta.idMetas))
-                            },
-                            onDelete = {
-                                metaToDelete = meta
-                            }
+            TabRow(
+                selectedTabIndex = pestañaSeleccionada,
+                containerColor = Background,
+                contentColor = Primary
+            ) {
+                titulosPestañas.forEachIndexed { indice, titulo ->
+                    Tab(
+                        selected = pestañaSeleccionada == indice,
+                        onClick = { pestañaSeleccionada = indice },
+                        text = { Text(titulo, fontWeight = FontWeight.Bold) }
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                if (metasState.isLoading && metasState.metas.isEmpty()) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Primary
+                    )
+                } else {
+                    val metasAVisualizar = if (pestañaSeleccionada == 0) metasEnProceso else metasHistorial
+                    if (metasAVisualizar.isEmpty()) {
+                        val mensajeVacio = if (pestañaSeleccionada == 0) {
+                            "Aún no tienes metas en proceso. ¡Crea una!"
+                        } else {
+                            "El historial de metas está vacío."
+                        }
+                        Text(
+                            text = mensajeVacio,
+                            modifier = Modifier.align(Alignment.Center),
+                            color = OnSurfaceVariant
                         )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(metasAVisualizar) { meta ->
+                                MetaCard(
+                                    meta = meta,
+                                    onEdit = if (pestañaSeleccionada == 0) {
+                                        {
+                                            navController.navigate(Routes.editarMeta(meta.idMetas))
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    onDelete = {
+                                        metaToDelete = meta
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -200,7 +237,7 @@ fun MetasScreen(
 @Composable
 fun MetaCard(
     meta: MetaResponse,
-    onEdit: () -> Unit,
+    onEdit: (() -> Unit)? = null,
     onDelete: () -> Unit
 ) {
     val typeInfo = tipoMetaIcons[meta.tipoMeta]
@@ -244,12 +281,14 @@ fun MetaCard(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Editar",
-                            tint = OnSurfaceVariant
-                        )
+                    if (onEdit != null) {
+                        IconButton(onClick = onEdit) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Editar",
+                                tint = OnSurfaceVariant
+                            )
+                        }
                     }
                     IconButton(onClick = onDelete) {
                         Icon(

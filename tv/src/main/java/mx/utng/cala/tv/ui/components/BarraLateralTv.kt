@@ -197,7 +197,7 @@ fun ElementoMenuLateral(
             focusedContainerColor = SurfaceVariant,
             pressedContainerColor = PrimaryContainer
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
