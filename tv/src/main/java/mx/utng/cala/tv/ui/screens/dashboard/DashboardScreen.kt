@@ -279,7 +279,7 @@ fun BotonTabPeriodo(
             focusedContainerColor = Surface,
             pressedContainerColor = Surface
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         modifier = modifier.width(100.dp).height(36.dp)
     ) {
         Box(
@@ -378,7 +378,7 @@ fun TarjetaMetrica(
             focusedContainerColor = SurfaceVariant,
             pressedContainerColor = SurfaceVariant
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier

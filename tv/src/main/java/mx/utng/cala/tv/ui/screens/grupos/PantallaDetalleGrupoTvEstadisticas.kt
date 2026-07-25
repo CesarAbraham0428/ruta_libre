@@ -148,7 +148,7 @@ fun PantallaDetalleGrupoTv(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
@@ -176,6 +176,7 @@ fun PantallaDetalleGrupoTv(
                     containerColor = Error,
                     contentColor = Color.White
                 ),
+                scale = ButtonDefaults.scale(focusedScale = 1.0f),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
             ) {
                 Icon(
@@ -558,6 +559,7 @@ private fun SelectorMiembroTv(
             focusedContainerColor = Primary,
             focusedContentColor = Color.Black
         ),
+        scale = ButtonDefaults.scale(focusedScale = 1.0f),
         shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp))
     ) {
         Text(texto, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

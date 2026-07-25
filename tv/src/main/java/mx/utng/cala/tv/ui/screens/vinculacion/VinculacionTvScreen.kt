@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import mx.utng.cala.tv.ui.theme.Background
@@ -48,7 +49,10 @@ fun VinculacionTvScreen(state: TvPairingUiState, onRetry: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             Text(it, color = Color(0xFFFF6B6B))
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry) { Text("Generar otro código") }
+            Button(
+                onClick = onRetry,
+                scale = ButtonDefaults.scale(focusedScale = 1.0f)
+            ) { Text("Generar otro código") }
         }
     }
 }

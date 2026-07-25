@@ -291,6 +291,7 @@ private fun BotonNavegacionGrafica(
             focusedContainerColor = Primary,
             focusedContentColor = Color.Black
         ),
+        scale = ButtonDefaults.scale(focusedScale = 1.0f),
         shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp))
     ) {
         Text(

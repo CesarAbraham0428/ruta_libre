@@ -386,7 +386,7 @@ fun PantallaFiltrosDetalladosVideos(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
@@ -429,7 +429,7 @@ fun PantallaFiltrosDetalladosVideos(
                         focusedContainerColor = if (seleccionado) Primary.copy(alpha = 0.8f) else SurfaceVariant.copy(alpha = 0.8f),
                         pressedContainerColor = PrimaryContainer
                     ),
-                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
                 ) {
                     Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                         Text(
@@ -511,7 +511,7 @@ fun PantallaDetalleReproductorVideo(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -756,7 +756,7 @@ fun TarjetaFiltroIcono(
                 shape = RoundedCornerShape(12.dp)
             )
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier
@@ -814,7 +814,7 @@ fun TarjetaVideoListado(
                 shape = RoundedCornerShape(16.dp)
             )
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
         Row(
             modifier = Modifier

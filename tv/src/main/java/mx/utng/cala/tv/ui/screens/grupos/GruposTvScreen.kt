@@ -312,7 +312,7 @@ fun TarjetaAccionGrupoTv(
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f),
             pressedContainerColor = PrimaryContainer
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Primary),
@@ -395,7 +395,7 @@ fun TarjetaGrupoTv(
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f),
             pressedContainerColor = PrimaryContainer
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Secondary),
@@ -600,7 +600,7 @@ fun PantallaCrearGrupoTv(
                         focusedContainerColor = Primary,
                         focusedContentColor = Color.Black
                     ),
-                    scale = ButtonDefaults.scale(focusedScale = 1.02f),
+                    scale = ButtonDefaults.scale(focusedScale = 1.0f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -623,7 +623,7 @@ fun PantallaCrearGrupoTv(
                 containerColor = SurfaceVariant,
                 focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
             ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -676,7 +676,7 @@ fun PantallaUnirseGrupoTv(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
@@ -776,7 +776,7 @@ fun PantallaUnirseGrupoTv(
                         focusedContainerColor = Primary,
                         focusedContentColor = Color.Black
                     ),
-                    scale = ButtonDefaults.scale(focusedScale = 1.02f),
+                    scale = ButtonDefaults.scale(focusedScale = 1.0f),
                     modifier = Modifier.fillMaxWidth(),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
                 ) {
@@ -799,7 +799,7 @@ fun PantallaUnirseGrupoTv(
                 containerColor = SurfaceVariant,
                 focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
             ),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -872,7 +872,7 @@ fun PantallaDetalleGrupoTvLegacy(
                     focusedContainerColor = Primary,
                     pressedContainerColor = PrimaryContainer
                 ),
-                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f)
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
@@ -904,6 +904,7 @@ fun PantallaDetalleGrupoTvLegacy(
                     containerColor = Error,
                     contentColor = Color.White
                 ),
+                scale = ButtonDefaults.scale(focusedScale = 1.0f),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp))
             ) {
                 Icon(
@@ -1242,7 +1243,7 @@ fun FilaMiembroGrupoTv(
             containerColor = SurfaceVariant,
             focusedContainerColor = SurfaceVariant.copy(alpha = 0.8f)
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = Border(
                 border = androidx.compose.foundation.BorderStroke(2.dp, Primary),
