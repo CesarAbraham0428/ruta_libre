@@ -15,6 +15,7 @@ object Routes {
     const val PERFIL = "perfil"
     const val VINCULAR_DISPOSITIVO = "vincular_dispositivo"
     const val DISPOSITIVOS = "dispositivos"
+    const val ACERCA_DE_LA_APP = "acerca_de_la_app"
     const val DETALLE_GRUPO = "detalle_grupo/{idGrupo}/{nombreGrupo}"
 
     fun entrenamiento(id: Int) = "entrenamiento/$id"
