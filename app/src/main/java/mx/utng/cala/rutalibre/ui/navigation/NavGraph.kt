@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import mx.utng.cala.rutalibre.ui.screens.auth.LoginScreen
 import mx.utng.cala.rutalibre.ui.screens.auth.RegisterScreen
+import mx.utng.cala.rutalibre.ui.screens.acerca.AcercaDeLaAppScreen
 import mx.utng.cala.rutalibre.ui.screens.home.HomeScreen
 import mx.utng.cala.rutalibre.ui.screens.entrenamiento.EntrenamientoScreen
 import mx.utng.cala.rutalibre.ui.screens.resumen.ResumenScreen
@@ -160,6 +161,9 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.DISPOSITIVOS) {
             val dispositivosViewModel: DispositivosViewModel = viewModel()
             DispositivosScreen(navController, authViewModel, dispositivosViewModel)
+        }
+        composable(Routes.ACERCA_DE_LA_APP) {
+            AcercaDeLaAppScreen(navController)
         }
     }
 }
