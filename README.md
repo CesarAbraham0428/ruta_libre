@@ -158,19 +158,7 @@ Antes de publicar una versión se comprueba la instalación y comunicación de l
   <img src="capturas_app/eliminar.jpeg" width="30%" alt="Eliminar Meta">
 </p>
 
-### Wear OS
-
-> Agrega las capturas en `capturas_app/` con los nombres indicados para que se muestren automáticamente.
-
-<p align="center">
-  <img src="capturas_app/wearos_inicio.png" width="30%" alt="Inicio de Ruta Libre en Wear OS">
-  <img src="capturas_app/wearos_metricas.png" width="30%" alt="Métricas de entrenamiento en Wear OS">
-  <img src="capturas_app/wearos_meta.png" width="30%" alt="Meta completada en Wear OS">
-</p>
-
 ### Android TV
-
-> Agrega las capturas en `capturas_app/` con los nombres indicados para que se muestren automáticamente.
 
 <p align="center">
   <img src="capturas_app/tv_vinculacion.png" width="45%" alt="Vinculación de Ruta Libre TV">
