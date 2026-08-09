@@ -337,6 +337,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         const val MIN_JUMP_DISTANCE_METERS = 50.0
         const val MAX_RUNNING_SPEED_METERS_PER_SECOND = 12.0
         const val STRIDE_LENGTH_METERS = 0.75
-        const val CALORIES_PER_KG_KM = 0.75
+        // Factor aproximado de kcal por kg y km para sesiones de running.
+        const val CALORIES_PER_KG_KM = 1.0
     }
 }

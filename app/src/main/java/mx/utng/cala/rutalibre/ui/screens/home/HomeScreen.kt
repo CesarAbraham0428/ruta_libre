@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -220,6 +221,16 @@ fun HomeScreen(
                 icono = Icons.Default.Devices,
                 colorAcento = Primary,
                 alHacerClick = { navController.navigate(Routes.DISPOSITIVOS) }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            TarjetaHome(
+                titulo = "Acerca de la app",
+                descripcion = "Conoce el alcance de las métricas y la información mostrada.",
+                icono = Icons.Default.Info,
+                colorAcento = Secondary,
+                alHacerClick = { navController.navigate(Routes.ACERCA_DE_LA_APP) }
             )
             
             Spacer(Modifier.height(32.dp))
