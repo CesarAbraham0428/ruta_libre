@@ -114,19 +114,19 @@ Proporcionar una solución multiplataforma integral para el monitoreo de la acti
 
 ## Releases y APK
 
-Las versiones publicadas se encuentran en [GitHub Releases](https://github.com/CesarAbraham0428/ruta_libre/releases). El Release de entrega debe incluir los APK de los tres módulos:
+Las versiones publicadas se encuentran en [GitHub Releases](https://github.com/CesarAbraham0428/ruta_libre/releases). El Release de evaluación `v2.1.0` incluye los APK de los tres módulos:
 
-- `RutaLibre-Mobile-vX.Y.Z.apk`
-- `RutaLibre-WearOS-vX.Y.Z.apk`
-- `RutaLibre-TV-vX.Y.Z.apk`
+- `RutaLibre-Mobile-v2.1.0-debug.apk`
+- `RutaLibre-WearOS-v2.1.0-debug.apk`
+- `RutaLibre-TV-v2.1.0-debug.apk`
 
-Los APK de producción se generan desde el mismo commit que recibe el tag semántico:
+Los APK de evaluación se generan desde el mismo commit que recibe el tag semántico:
 
 ```powershell
-.\gradlew.bat :app:assembleRelease :wearos:assembleRelease :tv:assembleRelease
+.\gradlew.bat :app:assembleDebug :wearos:assembleDebug :tv:assembleDebug
 ```
 
-Antes de publicar una versión se comprueba la instalación y comunicación de los tres módulos con el backend. No se incluyen credenciales ni la carta privada de validación del beneficiario en el Release.
+Antes de publicar una versión se comprueba la instalación y comunicación de los tres módulos con el backend. Las credenciales utilizadas por los clientes deben estar limitadas y destinadas exclusivamente al funcionamiento de la aplicación. La carta privada de validación del beneficiario no se publica en el Release.
 
 ## Capturas de la aplicación
 
@@ -157,6 +157,30 @@ Antes de publicar una versión se comprueba la instalación y comunicación de l
   <img src="capturas_app/editar.jpeg" width="30%" alt="Editar Meta">
   <img src="capturas_app/eliminar.jpeg" width="30%" alt="Eliminar Meta">
 </p>
+
+### Wear OS
+
+> Agrega las capturas en `capturas_app/` con los nombres indicados para que se muestren automáticamente.
+
+<p align="center">
+  <img src="capturas_app/wearos_inicio.png" width="30%" alt="Inicio de Ruta Libre en Wear OS">
+  <img src="capturas_app/wearos_metricas.png" width="30%" alt="Métricas de entrenamiento en Wear OS">
+  <img src="capturas_app/wearos_meta.png" width="30%" alt="Meta completada en Wear OS">
+</p>
+
+### Android TV
+
+> Agrega las capturas en `capturas_app/` con los nombres indicados para que se muestren automáticamente.
+
+<p align="center">
+  <img src="capturas_app/tv_vinculacion.png" width="45%" alt="Vinculación de Ruta Libre TV">
+  <img src="capturas_app/tv_dashboard.png" width="45%" alt="Dashboard de estadísticas en Android TV">
+</p>
+<p align="center">
+  <img src="capturas_app/tv_grupos.png" width="45%" alt="Grupos y ranking en Android TV">
+  <img src="capturas_app/tv_videos.png" width="45%" alt="Contenido multimedia en Android TV">
+</p>
+
 ---
 
 ## Estructura detallada
