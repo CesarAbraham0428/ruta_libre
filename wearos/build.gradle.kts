@@ -25,8 +25,8 @@ android {
         applicationId = "mx.utng.cala.rutalibre"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.1.0"
         buildConfigField("String", "MQTT_HOST", mqttProperties.getProperty("MQTT_HOST", "").asBuildConfigString())
         buildConfigField("int", "MQTT_PORT", mqttProperties.getProperty("MQTT_PORT", "8883"))
         buildConfigField("String", "MQTT_USERNAME", mqttProperties.getProperty("MQTT_USERNAME", "").asBuildConfigString())

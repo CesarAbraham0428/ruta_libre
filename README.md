@@ -12,6 +12,14 @@ Marco Antonio Martínez Ramírez
 
 Grupo: GIDS6093-E
 
+## Beneficiario y problemática atendida
+
+El proyecto fue validado por el **Servicio de Nutrición de la Universidad Tecnológica del Norte de Guanajuato (UTNG)**. Por protección de datos personales, la carta de validación y los datos de contacto de la beneficiaria no se publican en este repositorio.
+
+Se identificó la necesidad de facilitar el seguimiento de la actividad física de los usuarios como complemento de la orientación nutricional. La falta de una herramienta que concentre entrenamientos, métricas y metas personales dificulta visualizar avances y fomentar la constancia en la adopción de hábitos saludables.
+
+Ruta Libre atiende esta necesidad mediante una solución multiplataforma que permite registrar entrenamientos desde el teléfono o el reloj, sincronizar la información mediante una API REST y consultar avances personales y grupales desde una pantalla inteligente.
+
 ## Arquitectura del proyecto
 
 ```
@@ -28,10 +36,19 @@ El proyecto usa **3 módulos de aplicación** y **1 módulo de librería** (`:co
 
 ### Dependencias entre módulos
 
-```
-:app  ──→ :core
-:tv   ──→ :core
-:wearos ─→ :core
+```mermaid
+flowchart LR
+    U[Usuario] --> M[App móvil Android]
+    U --> W[App Wear OS]
+    M --> C[Módulo compartido core]
+    W --> C
+    T[App Android TV] --> C
+    C --> API[API REST Node.js]
+    API --> DB[(PostgreSQL + PostGIS)]
+    API --> MQTT[Sincronización MQTT]
+    MQTT --> M
+    MQTT --> W
+    MQTT --> T
 ```
 
 Ningún módulo de UI depende de otro. Cada uno importa `:core` para acceder a los datos.
@@ -79,10 +96,12 @@ Proporcionar una solución multiplataforma integral para el monitoreo de la acti
    - Base de datos PostgreSQL.
 
 2. **Configuración de la API**:
-   - Localiza el archivo `core/src/main/java/mx/utng/cala/core/data/remote/RetrofitClient.kt`.
-   - Ajusta la `BASE_URL` según tu entorno:
-     - **Emulador**: `http://10.0.2.2:3000/api/`
-     - **Físico**: `http://localhost:3000/api/` (requiere ADB reverse).
+   - Por defecto, las aplicaciones utilizan el backend desplegado en Render: `https://ruta-libre.onrender.com/api/`.
+   - Para usar un backend local, agrega esta propiedad en `local.properties`:
+     ```properties
+     API_BASE_URL=http://10.0.2.2:3000/api/
+     ```
+   - `10.0.2.2` permite que los emuladores Android accedan al `localhost` de la computadora.
 
 3. **Ejecución en Dispositivo Físico (USB)**:
    - Si usas un celular físico, ejecuta en la terminal:
@@ -92,6 +111,22 @@ Proporcionar una solución multiplataforma integral para el monitoreo de la acti
 
 4. **Despliegue**:
    - Selecciona el módulo deseado (`app`, `wearos` o `tv`) en la configuración de ejecución de Android Studio y presiona **Run**.
+
+## Releases y APK
+
+Las versiones publicadas se encuentran en [GitHub Releases](https://github.com/CesarAbraham0428/ruta_libre/releases). El Release de entrega debe incluir los APK de los tres módulos:
+
+- `RutaLibre-Mobile-vX.Y.Z.apk`
+- `RutaLibre-WearOS-vX.Y.Z.apk`
+- `RutaLibre-TV-vX.Y.Z.apk`
+
+Los APK de producción se generan desde el mismo commit que recibe el tag semántico:
+
+```powershell
+.\gradlew.bat :app:assembleRelease :wearos:assembleRelease :tv:assembleRelease
+```
+
+Antes de publicar una versión se comprueba la instalación y comunicación de los tres módulos con el backend. No se incluyen credenciales ni la carta privada de validación del beneficiario en el Release.
 
 ## Capturas de la aplicación
 
@@ -337,7 +372,7 @@ El script de creación está en `source/db/scrip1.sql`.
 
 ## API REST
 
-El `ApiService.kt` define 20 endpoints REST. La URL base por defecto apunta a `http://10.0.2.2:3000/api/` (localhost para el emulador Android). Los principales endpoints:
+El `ApiService.kt` define los endpoints REST compartidos por las tres aplicaciones. La URL base se inyecta mediante `BuildConfig.API_BASE_URL` y, por defecto, apunta al backend desplegado en Render. Los principales endpoints:
 
 ```
 Auth:     POST /auth/login, POST /auth/register
@@ -399,34 +434,19 @@ Todos los dispositivos se vinculan al mismo `id_usuario`.
 
 
 
-## Configuración por desarrollador
+## Configuración local opcional
 
-### Marco (emulador)
+La URL de la API se configura en `local.properties`, archivo que no debe subirse a GitHub:
 
-La configuración por defecto funciona sin cambios:
+```properties
+# Emuladores Android con backend ejecutándose en esta computadora
+API_BASE_URL=http://10.0.2.2:3000/api/
+```
 
-- **`core/src/main/java/mx/utng/cala/core/data/remote/RetrofitClient.kt`**:
-  ```kotlin
-  private const val BASE_URL = "http://10.0.2.2:3000/api/"
-  ```
-- El emulador traduce `10.0.2.2` al `localhost` de la laptop automáticamente.
-- Solo asegúrate de que el backend esté corriendo antes de ejecutar la app.
+Si se prueba un dispositivo físico conectado por USB, se puede usar `API_BASE_URL=http://localhost:3000/api/` junto con:
 
-### César (dispositivo físico por USB)
+```powershell
+adb reverse tcp:3000 tcp:3000
+```
 
-El celular no puede ver `10.0.2.2`. Hay que usar `adb reverse` para crear un túnel USB:
-
-1. **Cambiar la URL base** en `RetrofitClient.kt`:
-   ```kotlin
-   private const val BASE_URL = "http://localhost:3000/api/"
-   ```
-
-2. **Conectar el celular por USB** y ejecutar este comando en la terminal:
-   ```bash
-   C:\Users\lopez\AppData\Local\Android\Sdk\platform-tools\adb.exe reverse tcp:3000 tcp:3000
-   ```
-   > Si `adb` está en el `PATH`, basta con `adb reverse tcp:3000 tcp:3000`.
-
-3. **Rebuild** la app desde Android Studio y ejecútala en el celular.
-
->  El comando `adb reverse` hay que volverlo a ejecutar cada vez que se desconecte o reconecte el dispositivo USB.
+Después de cambiar `API_BASE_URL`, es necesario limpiar, recompilar y reinstalar las aplicaciones para que la nueva dirección quede incorporada en los APK.
