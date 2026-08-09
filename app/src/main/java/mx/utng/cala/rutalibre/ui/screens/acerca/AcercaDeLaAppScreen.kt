@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,12 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import mx.utng.cala.rutalibre.ui.theme.Background
+import mx.utng.cala.rutalibre.ui.theme.Calorias
 import mx.utng.cala.rutalibre.ui.theme.Info as InfoColor
 import mx.utng.cala.rutalibre.ui.theme.OnBackground
 import mx.utng.cala.rutalibre.ui.theme.OnSurface
 import mx.utng.cala.rutalibre.ui.theme.OnSurfaceVariant
 import mx.utng.cala.rutalibre.ui.theme.Outline
 import mx.utng.cala.rutalibre.ui.theme.Surface
+import mx.utng.cala.rutalibre.ui.theme.SurfaceVariant
 import mx.utng.cala.rutalibre.ui.theme.Warning
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,6 +146,10 @@ fun AcercaDeLaAppScreen(navController: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
+            FormulaCaloriasCard()
+
+            Spacer(Modifier.height(16.dp))
+
             AvisoCard(
                 icono = Icons.Default.HealthAndSafety,
                 titulo = "No es una recomendación médica",
@@ -158,6 +165,103 @@ fun AcercaDeLaAppScreen(navController: NavController) {
                 color = OnSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun FormulaCaloriasCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Calorias.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(16.dp)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Surface)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Calorias.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = Calorias,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Estimación de calorías",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface
+                    )
+                    Text(
+                        text = "Cálculo utilizado en el dispositivo móvil",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OnSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceVariant, RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Calorías estimadas =",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OnSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Peso (kg) × Distancia (km)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Calorias
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Warning.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = Warning,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Resultado aproximado: puede variar según la persona, el dispositivo y las condiciones de la actividad.",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = OnSurface
+                )
+            }
         }
     }
 }
