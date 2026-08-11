@@ -29,6 +29,7 @@ import androidx.wear.compose.material3.ScreenScaffold
 import mx.utng.cala.wearos.presentation.navigation.WearRoutes
 import mx.utng.cala.wearos.presentation.theme.*
 
+/** Presenta la pantalla inicial con métricas en cero y acciones de sesión. */
 @Composable
 fun InicioScreen(
     navController: NavController,
@@ -156,6 +157,7 @@ fun InicioScreen(
     }
 }
 
+/** Dibuja una fila reutilizable para mostrar una métrica y su unidad. */
 @Composable
 private fun MetricRow(
     icon: ImageVector,

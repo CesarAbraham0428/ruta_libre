@@ -2,6 +2,7 @@ package mx.utng.cala.wearos.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
+/** Colores base de la interfaz y colores específicos para las métricas. */
 val Primary = Color(0xFF7ED957)
 val Secondary = Color(0xFF4DA3FF)
 val Tertiary = Color(0xFF7C4DFF)

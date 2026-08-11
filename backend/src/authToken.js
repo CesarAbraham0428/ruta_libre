@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 
+/** Obtiene el secreto configurado y valida su longitud mínima. */
 function getSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
@@ -8,10 +9,12 @@ function getSecret() {
   return secret;
 }
 
+/** Convierte un valor JSON a la representación base64url usada por el token. */
 function encode(value) {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
+/** Firma un token JWT con HMAC-SHA256 y añade sus fechas de emisión y expiración. */
 function signToken(payload, expiresInSeconds = 7 * 24 * 60 * 60) {
   const now = Math.floor(Date.now() / 1000);
   const header = encode({ alg: 'HS256', typ: 'JWT' });
@@ -23,6 +26,7 @@ function signToken(payload, expiresInSeconds = 7 * 24 * 60 * 60) {
   return `${header}.${body}.${signature}`;
 }
 
+/** Verifica la estructura, firma y vigencia de un token JWT. */
 function verifyToken(token) {
   const parts = token?.split('.') || [];
   if (parts.length !== 3) throw new Error('Token no válido');

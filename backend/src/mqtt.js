@@ -3,6 +3,7 @@ const { randomUUID } = require('crypto');
 
 let client = null;
 
+/** Comprueba si están disponibles las credenciales mínimas de MQTT. */
 function configuracionCompleta() {
   return Boolean(
     process.env.MQTT_HOST &&
@@ -11,6 +12,7 @@ function configuracionCompleta() {
   );
 }
 
+/** Crea la conexión segura con HiveMQ y configura su reconexión automática. */
 function iniciarMqtt() {
   if (client || !configuracionCompleta()) {
     if (!configuracionCompleta()) {
@@ -30,14 +32,17 @@ function iniciarMqtt() {
     rejectUnauthorized: true
   });
 
+  /** Registra la conexión exitosa con el broker MQTT. */
   client.on('connect', () => {
     console.log('Conectado a HiveMQ Cloud correctamente.');
   });
 
+  /** Informa que el cliente intentará recuperar el canal MQTT. */
   client.on('reconnect', () => {
     console.log('Reconectando con HiveMQ Cloud...');
   });
 
+  /** Registra los errores que ocurren durante la comunicación MQTT. */
   client.on('error', (error) => {
     console.error('Error de conexión MQTT:', error.message);
   });
@@ -45,6 +50,7 @@ function iniciarMqtt() {
   return client;
 }
 
+/** Publica un evento JSON versionado en un tópico MQTT con QoS 1. */
 function publicarEvento(topic, data) {
   const mqttClient = iniciarMqtt();
   if (!mqttClient) return;
@@ -65,6 +71,7 @@ function publicarEvento(topic, data) {
   });
 }
 
+/** Indica si el cliente MQTT está conectado al broker. */
 function estaConectado() {
   return Boolean(client?.connected);
 }

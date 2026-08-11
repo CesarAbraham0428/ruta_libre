@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 
 // GET /api/usuarios/:id
+/** Obtiene los datos públicos del perfil de un usuario. */
 router.get('/:id', async (req, res) => {
   const idUsuario = parseInt(req.params.id);
   if (isNaN(idUsuario)) {
@@ -35,6 +36,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/usuarios/:id/peso
+/** Actualiza el peso del usuario después de validar su rango permitido. */
 router.put('/:id/peso', async (req, res) => {
   const idUsuario = parseInt(req.params.id);
   const pesoKg = Number(req.body.pesoKg);
@@ -62,6 +64,7 @@ router.put('/:id/peso', async (req, res) => {
 });
 
 // PUT /api/usuarios/:id
+/** Actualiza el perfil y, si se proporciona, la contraseña del usuario. */
 router.put('/:id', async (req, res) => {
   const idUsuario = parseInt(req.params.id);
   if (isNaN(idUsuario)) {

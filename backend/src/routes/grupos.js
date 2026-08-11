@@ -12,7 +12,7 @@ const DAY_MAP = {
   7: 'Dom'
 };
 
-// Generador de código único de 6 caracteres
+/** Genera un código alfanumérico corto para identificar un grupo. */
 function generateGroupCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
@@ -23,6 +23,7 @@ function generateGroupCode() {
 }
 
 // POST /api/grupos (Crear grupo)
+/** Crea un grupo, registra opcionalmente a su creador y confirma la transacción. */
 router.post('/', async (req, res) => {
   const idUsuarioRaw = req.body.idUsuario ?? req.body.id_usuario ?? req.body.idCreador ?? req.body.id_creador;
   const idUsuario = idUsuarioRaw !== undefined && idUsuarioRaw !== null ? parseInt(idUsuarioRaw, 10) : undefined;
@@ -84,6 +85,7 @@ router.post('/', async (req, res) => {
 });
 
 // POST /api/grupos/unirse (Unirse a grupo)
+/** Añade al usuario a un grupo mediante su código de invitación. */
 router.post('/unirse', async (req, res) => {
   const idUsuarioRaw = req.body.idUsuario ?? req.body.id_usuario ?? req.body.idCreador ?? req.body.id_creador;
   const idUsuario = idUsuarioRaw !== undefined && idUsuarioRaw !== null ? parseInt(idUsuarioRaw, 10) : undefined;
@@ -119,6 +121,7 @@ router.post('/unirse', async (req, res) => {
 });
 
 // DELETE /api/grupos/:idGrupo/miembros/:idUsuario (Salir del grupo)
+/** Elimina la relación entre un usuario y el grupo indicado. */
 router.delete('/:idGrupo/miembros/:idUsuario', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo);
   const idUsuario = parseInt(req.params.idUsuario);
@@ -145,6 +148,7 @@ router.delete('/:idGrupo/miembros/:idUsuario', async (req, res) => {
 });
 
 // GET /api/grupos/usuario/:idUsuario (Grupos del usuario)
+/** Lista los grupos a los que pertenece un usuario. */
 router.get('/usuario/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -176,6 +180,7 @@ router.get('/usuario/:idUsuario', async (req, res) => {
 });
 
 // GET /api/grupos/:idGrupo/miembros (Miembros y rendimiento semanal)
+/** Devuelve los miembros de un grupo junto con sus métricas semanales. */
 router.get('/:idGrupo/miembros', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo);
   if (isNaN(idGrupo)) {
@@ -221,7 +226,7 @@ router.get('/:idGrupo/miembros', async (req, res) => {
 });
 
 // GET /api/grupos/:idGrupo/miembros/:idUsuario/estadisticas
-// Estadisticas semanales de un miembro que pertenece al grupo.
+/** Obtiene las estadísticas diarias y totales de un miembro del grupo. */
 router.get('/:idGrupo/miembros/:idUsuario/estadisticas', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo, 10);
   const idUsuario = parseInt(req.params.idUsuario, 10);
@@ -302,6 +307,7 @@ router.get('/:idGrupo/miembros/:idUsuario/estadisticas', async (req, res) => {
 });
 
 // GET /api/grupos/:idGrupo/ranking (Miembros ordenados por distancia semanal)
+/** Ordena a los miembros del grupo según su distancia semanal acumulada. */
 router.get('/:idGrupo/ranking', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo);
   if (isNaN(idGrupo)) {
@@ -347,6 +353,7 @@ router.get('/:idGrupo/ranking', async (req, res) => {
 });
 
 // DELETE /api/grupos/:idGrupo (Eliminar grupo)
+/** Elimina un grupo después de verificar que el usuario sea su creador. */
 router.delete('/:idGrupo', async (req, res) => {
   const idGrupo = parseInt(req.params.idGrupo);
   const idUsuarioRaw = req.query.idUsuario ?? req.body.idUsuario ?? req.query.id_usuario ?? req.body.id_usuario ?? req.query.idCreador ?? req.body.idCreador;

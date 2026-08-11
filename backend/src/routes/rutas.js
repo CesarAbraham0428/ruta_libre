@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 
 // POST /api/rutas/actualizar
+/** Reemplaza las coordenadas almacenadas de una ruta existente. */
 router.post('/actualizar', async (req, res) => {
   const { idRuta, coordenadas } = req.body;
   if (!idRuta || !coordenadas) {
@@ -34,6 +35,7 @@ router.post('/actualizar', async (req, res) => {
 });
 
 // GET /api/rutas/:id
+/** Devuelve las coordenadas asociadas a una ruta. */
 router.get('/:id', async (req, res) => {
   const idRuta = parseInt(req.params.id);
   if (isNaN(idRuta)) {

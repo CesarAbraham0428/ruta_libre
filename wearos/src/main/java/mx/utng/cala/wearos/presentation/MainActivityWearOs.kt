@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.repository.DispositivoRepository
 
+/** Activity principal que sincroniza la identidad y presenta la interfaz del reloj. */
 class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener {
     private lateinit var identityStore: WearIdentityStore
     private var linkedUserId by mutableStateOf<Int?>(null)
@@ -43,6 +44,7 @@ class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener
         )
     }
 
+    /** Inicializa la sesión, los permisos, MQTT y el grafo de navegación. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         identityStore = WearIdentityStore(this)
@@ -81,6 +83,7 @@ class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener
         }
     }
 
+    /** Registra la escucha de datos, valida la sesión y conecta MQTT al volver a pantalla. */
     override fun onStart() {
         super.onStart()
         val dataClient = Wearable.getDataClient(this)
@@ -97,18 +100,21 @@ class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener
         }
     }
 
+    /** Libera listeners y desconecta MQTT cuando la Activity deja de estar visible. */
     override fun onStop() {
         Wearable.getDataClient(this).removeListener(this)
         mqttSubscriber.disconnect()
         super.onStop()
     }
 
+    /** Procesa cambios de identidad enviados por la aplicación móvil mediante Data Layer. */
     override fun onDataChanged(events: DataEventBuffer) {
         events.filter { it.type == DataEvent.TYPE_CHANGED }.forEach { event ->
             readIdentity(event.dataItem.uri.path, DataMapItem.fromDataItem(event.dataItem))
         }
     }
 
+    /** Guarda una identidad sincronizada y conecta el reloj al canal del usuario. */
     private fun readIdentity(path: String?, item: DataMapItem) {
         if (path != "/ruta-libre/identity") return
         val idUsuario = item.dataMap.getInt("idUsuario", -1)
@@ -121,6 +127,7 @@ class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener
         }
     }
 
+    /** Revoca la sesión remota del reloj y limpia sus credenciales locales. */
     private fun cerrarSesionWear() {
         lifecycleScope.launch {
             identityStore.token?.let { dispositivoRepository.cerrarSesionDispositivo(it) }
@@ -128,6 +135,7 @@ class MainActivityWearOs : ComponentActivity(), DataClient.OnDataChangedListener
         }
     }
 
+    /** Borra la sesión local y detiene la recepción de eventos MQTT. */
     private fun limpiarSesionLocal() {
         identityStore.clear()
         linkedUserId = null

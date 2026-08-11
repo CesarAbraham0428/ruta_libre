@@ -5,6 +5,7 @@ const db = require('../db');
 const { signToken } = require('../authToken');
 
 // POST /api/auth/register
+/** Registra un usuario nuevo después de validar y cifrar su contraseña. */
 router.post('/register', async (req, res) => {
   const { nombre, nombreUsuario, password } = req.body;
   if (!nombre || !nombreUsuario || !password) {
@@ -38,6 +39,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
+/** Autentica al usuario y devuelve sus datos junto con un token JWT. */
 router.post('/login', async (req, res) => {
   const { nombreUsuario, password } = req.body;
   if (!nombreUsuario || !password) {

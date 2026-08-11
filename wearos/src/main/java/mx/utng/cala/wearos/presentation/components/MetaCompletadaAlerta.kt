@@ -26,6 +26,7 @@ import androidx.wear.compose.material3.Text
 import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.wearos.presentation.theme.*
 
+/** Muestra un diálogo compacto cuando el usuario completa una meta. */
 @Composable
 fun MetaCompletadaAlerta(
     visible: Boolean,

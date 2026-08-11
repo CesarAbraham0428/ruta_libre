@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 
 // GET /api/notificaciones/usuario/:idUsuario
+/** Recupera las notificaciones del usuario ordenadas de la más reciente a la más antigua. */
 router.get('/usuario/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -36,6 +37,7 @@ router.get('/usuario/:idUsuario', async (req, res) => {
 });
 
 // PUT /api/notificaciones/:id/leer-movil
+/** Marca una notificación como leída en la aplicación móvil. */
 router.put('/:id/leer-movil', async (req, res) => {
   const idNotificacion = parseInt(req.params.id);
   if (isNaN(idNotificacion)) {
@@ -60,6 +62,7 @@ router.put('/:id/leer-movil', async (req, res) => {
 });
 
 // PUT /api/notificaciones/:id/leer-wear
+/** Marca una notificación como leída en el smartwatch. */
 router.put('/:id/leer-wear', async (req, res) => {
   const idNotificacion = parseInt(req.params.id);
   if (isNaN(idNotificacion)) {

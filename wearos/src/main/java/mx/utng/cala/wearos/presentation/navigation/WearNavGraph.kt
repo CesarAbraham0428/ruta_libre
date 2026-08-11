@@ -17,11 +17,13 @@ import mx.utng.cala.wearos.presentation.screens.InicioScreen
 import mx.utng.cala.wearos.presentation.screens.MetricasScreen
 import mx.utng.cala.wearos.presentation.viewmodel.WearEntrenamientoViewModel
 
+/** Rutas disponibles dentro de la interfaz de Wear OS. */
 object WearRoutes {
     const val INICIO = "inicio"
     const val METRICAS = "metricas"
 }
 
+/** Conecta las pantallas del reloj y muestra las alertas de metas completadas. */
 @Composable
 fun WearNavGraph(
     navController: NavHostController,

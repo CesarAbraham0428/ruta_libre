@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 
 // POST /api/metas
+/** Crea una meta activa evitando duplicar el mismo tipo para el usuario. */
 router.post('/', async (req, res) => {
   const { idUsuario, tipoMeta, valorObjetivo } = req.body;
   if (!idUsuario || !tipoMeta || !valorObjetivo) {
@@ -44,6 +45,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/metas/:idMetas
+/** Actualiza parcialmente los valores y el estado de una meta. */
 router.put('/:idMetas', async (req, res) => {
   const idMetas = parseInt(req.params.idMetas);
   if (isNaN(idMetas)) {
@@ -90,6 +92,7 @@ router.put('/:idMetas', async (req, res) => {
 });
 
 // DELETE /api/metas/:idMetas
+/** Elimina una meta mediante su identificador. */
 router.delete('/:idMetas', async (req, res) => {
   const idMetas = parseInt(req.params.idMetas);
   if (isNaN(idMetas)) {
@@ -114,6 +117,7 @@ router.delete('/:idMetas', async (req, res) => {
 });
 
 // GET /api/metas/usuario/:idUsuario
+/** Lista todas las metas registradas para un usuario. */
 router.get('/usuario/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {

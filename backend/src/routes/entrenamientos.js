@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { publicarEvento } = require('../mqtt');
 
-// Helper para mapear número de día ISO (1=Lunes, 7=Domingo) a abreviación en español
+/** Traduce el número ISO del día de la semana a su abreviación en español. */
 const DAY_MAP = {
   1: 'Lun',
   2: 'Mar',
@@ -15,6 +15,7 @@ const DAY_MAP = {
 };
 
 // POST /api/entrenamientos/iniciar (Iniciar entrenamiento)
+/** Crea una sesión de entrenamiento vacía y notifica su inicio por MQTT. */
 router.post('/iniciar', async (req, res) => {
   const { idUsuario } = req.body;
   if (!idUsuario) {
@@ -59,6 +60,7 @@ router.post('/iniciar', async (req, res) => {
 });
 
 // PUT /api/entrenamientos/finalizar (Finalizar entrenamiento y actualizar metas)
+/** Guarda las métricas, actualiza metas y cierra una sesión en una transacción. */
 router.put('/finalizar', async (req, res) => {
   const { 
     idEntrenamiento, 
@@ -219,6 +221,7 @@ router.put('/finalizar', async (req, res) => {
 });
 
 // GET /api/entrenamientos/activo/:idUsuario
+/** Obtiene la última sesión que todavía está marcada como activa. */
 router.get('/activo/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -254,6 +257,7 @@ router.get('/activo/:idUsuario', async (req, res) => {
 });
 
 // GET /api/entrenamientos/usuario/:idUsuario (Historial de entrenamientos)
+/** Devuelve el historial de entrenamientos del usuario ordenado por fecha. */
 router.get('/usuario/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -294,6 +298,7 @@ router.get('/usuario/:idUsuario', async (req, res) => {
 });
 
 // GET /api/entrenamientos/semana/:idUsuario (Dashboard semanal)
+/** Construye el resumen de métricas acumuladas y diarias de la semana actual. */
 router.get('/semana/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -369,6 +374,7 @@ router.get('/semana/:idUsuario', async (req, res) => {
 });
 
 // GET /api/entrenamientos/comparacion/:idUsuario (Comparación de rendimiento semanal)
+/** Compara las métricas de la semana actual con las de la semana anterior. */
 router.get('/comparacion/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -402,7 +408,7 @@ router.get('/comparacion/:idUsuario', async (req, res) => {
     );
     const prev = previousWeekResult.rows[0];
 
-    // Función auxiliar para calcular porcentaje de mejora
+    /** Calcula el porcentaje de cambio entre un valor actual y uno anterior. */
     const calcMejora = (c, p) => {
       const currentVal = parseFloat(c);
       const prevVal = parseFloat(p);
@@ -426,6 +432,7 @@ router.get('/comparacion/:idUsuario', async (req, res) => {
 });
 
 // GET /api/entrenamientos/mes/:idUsuario (Dashboard mensual)
+/** Agrupa las métricas del mes actual en cuatro semanas de lunes a domingo. */
 router.get('/mes/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -459,7 +466,7 @@ router.get('/mes/:idUsuario', async (req, res) => {
       [idUsuario]
     );
 
-    // Calcular cuatro semanas del mes actual, siempre de lunes a domingo.
+    /** Genera los cuatro rangos semanales que se muestran para el mes actual. */
     const obtenerSemanasDelMes = () => {
       const ahora = new Date();
       const anio = ahora.getFullYear();
@@ -548,6 +555,7 @@ router.get('/mes/:idUsuario', async (req, res) => {
 });
 
 // GET /api/entrenamientos/comparacion-mes/:idUsuario (Comparación de rendimiento mensual)
+/** Compara las métricas acumuladas del mes actual y del mes anterior. */
 router.get('/comparacion-mes/:idUsuario', async (req, res) => {
   const idUsuario = parseInt(req.params.idUsuario);
   if (isNaN(idUsuario)) {
@@ -581,7 +589,7 @@ router.get('/comparacion-mes/:idUsuario', async (req, res) => {
     );
     const anterior = mesAnteriorResultado.rows[0];
 
-    // Función auxiliar para calcular porcentaje de mejora
+    /** Calcula el porcentaje de variación entre los valores de dos meses. */
     const calcularMejora = (act, ant) => {
       const valorActual = parseFloat(act);
       const valorAnterior = parseFloat(ant);

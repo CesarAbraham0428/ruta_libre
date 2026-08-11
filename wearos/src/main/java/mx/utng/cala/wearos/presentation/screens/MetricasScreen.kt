@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import mx.utng.cala.wearos.presentation.theme.*
 import java.util.Locale
 
+/** Muestra las métricas del entrenamiento activo y el control para finalizarlo. */
 @Composable
 fun MetricasScreen(
     distancia: Double,
@@ -165,6 +166,7 @@ fun MetricasScreen(
     }
 }
 
+/** Dibuja una fila reutilizable para una métrica del entrenamiento. */
 @Composable
 private fun MetricRow(
     icon: ImageVector,

@@ -1,5 +1,6 @@
 const { verifyToken } = require('../authToken');
 
+/** Protege una ruta exigiendo un token JWT de usuario válido. */
 function requireUser(req, res, next) {
   const authorization = req.get('authorization') || '';
   const [scheme, token] = authorization.split(' ');
@@ -19,6 +20,7 @@ function requireUser(req, res, next) {
   }
 }
 
+/** Protege una ruta exigiendo un token JWT emitido para un dispositivo. */
 function requireDevice(req, res, next) {
   const authorization = req.get('authorization') || '';
   const [scheme, token] = authorization.split(' ');

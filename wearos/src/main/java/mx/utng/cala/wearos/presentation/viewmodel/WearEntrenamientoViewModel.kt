@@ -14,11 +14,13 @@ import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
 import mx.utng.cala.core.data.repository.MetaRepository
 
+/** Representa una meta que se alcanzó durante el entrenamiento. */
 data class MetaCompletada(
     val tipoMeta: TipoMeta,
     val valorObjetivo: Double
 )
 
+/** Estado observable de la sesión y de las metas del reloj. */
 data class WearEntrenamientoUiState(
     val estaActivo: Boolean = false,
     val idEntrenamiento: Int? = null,
@@ -31,6 +33,7 @@ data class WearEntrenamientoUiState(
     val metaActual: MetaCompletada? = null
 )
 
+/** Coordina sensores, repositorios y estado de la sesión de entrenamiento en Wear OS. */
 class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val entrenamientoRepository = EntrenamientoRepository()
@@ -45,6 +48,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
     private val metasUsuario = mutableListOf<MetaResponse>()
     private val metasAlcanzadas = mutableSetOf<TipoMeta>()
 
+    /** Carga las metas e inicia el ejercicio y el entrenamiento remoto del usuario. */
     fun iniciar(idUsuario: Int) {
         fechaInicioMillis = System.currentTimeMillis()
         metasAlcanzadas.clear()
@@ -95,6 +99,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
+    /** Actualiza las métricas visibles y revisa si alguna meta fue alcanzada. */
     fun actualizarMetricas(pasos: Int, calorias: Int, distancia: Double) {
         if (!_uiState.value.estaActivo) return
 
@@ -112,6 +117,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         verificarMetasUsuario(distancia, pasos, calorias, tiempoSegundos)
     }
 
+    /** Compara las métricas acumuladas con las metas activas del usuario. */
     private fun verificarMetasUsuario(distancia: Double, pasos: Int, calorias: Int, tiempoSegundos: Int) {
         if (_uiState.value.mostrarMetaCompletada) return
 
@@ -148,6 +154,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
+    /** Detiene sensores, guarda el entrenamiento y prepara los avisos de metas. */
     fun finalizar(idUsuario: Int, onResult: () -> Unit = {}) {
         _uiState.value = _uiState.value.copy(estaActivo = false)
 
@@ -201,6 +208,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
+    /** Confirma en el backend las metas completadas después de guardar la sesión. */
     private fun checkMetasCompletadas(idUsuario: Int) {
         viewModelScope.launch {
             metaRepository.getMetas(idUsuario).fold(
@@ -235,6 +243,7 @@ class WearEntrenamientoViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
+    /** Cierra el aviso actual o muestra la siguiente meta completada pendiente. */
     fun aceptarMetaCompletada() {
         val restantes = _uiState.value.metasCompletadas.drop(1)
         if (restantes.isNotEmpty()) {

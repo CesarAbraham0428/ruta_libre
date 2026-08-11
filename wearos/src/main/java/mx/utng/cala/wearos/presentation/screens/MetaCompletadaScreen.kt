@@ -29,6 +29,7 @@ import androidx.wear.compose.material3.Text
 import mx.utng.cala.wearos.presentation.viewmodel.MetaCompletada
 import mx.utng.cala.wearos.presentation.theme.*
 
+/** Presenta el detalle de una meta alcanzada y permite confirmar el aviso. */
 @Composable
 fun MetaCompletadaScreen(
     meta: MetaCompletada,

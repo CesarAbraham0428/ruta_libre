@@ -1,3 +1,4 @@
+/** Ejecuta una prueba de integración del flujo principal de la API REST. */
 async function runTests() {
   const baseUrl = 'http://localhost:3000/api';
   console.log('--- Iniciando Pruebas de API REST ---');

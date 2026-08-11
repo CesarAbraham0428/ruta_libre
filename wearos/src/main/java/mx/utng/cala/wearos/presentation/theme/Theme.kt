@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ColorScheme
 
+/** Esquema de colores Material adaptado a la pantalla del reloj. */
 private val WearColorScheme = ColorScheme(
     primary = Primary,
     onPrimary = Color.Black,
@@ -31,6 +32,7 @@ private val WearColorScheme = ColorScheme(
     outlineVariant = Color.DarkGray
 )
 
+/** Aplica la paleta visual de Ruta Libre a todos los composables del reloj. */
 @Composable
 fun RutaLibreTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = WearColorScheme, content = content)

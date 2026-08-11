@@ -8,6 +8,7 @@ const mqttService = require('../mqtt');
 const router = express.Router();
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+/** Genera un código corto aleatorio para iniciar la vinculación de una TV. */
 function randomCode(length = 6) {
   return Array.from(
     crypto.randomBytes(length),
@@ -15,10 +16,12 @@ function randomCode(length = 6) {
   ).join('');
 }
 
+/** Genera el hash SHA-256 del secreto privado de un dispositivo. */
 function hashSecret(secret) {
   return crypto.createHash('sha256').update(secret).digest('hex');
 }
 
+/** Compara un secreto recibido con su hash almacenado de forma segura. */
 function secretsMatch(secret, expectedHash) {
   const received = Buffer.from(hashSecret(secret));
   const expected = Buffer.from(expectedHash || '');
@@ -26,6 +29,7 @@ function secretsMatch(secret, expectedHash) {
 }
 
 // TV solicita un código temporal y conserva el secreto para consultar el resultado.
+/** Crea un código temporal y las credenciales iniciales de una TV. */
 router.post('/solicitar-vinculacion', async (req, res) => {
   const { tipo = 'tv', nombre = 'Ruta Libre TV' } = req.body;
   if (tipo !== 'tv') {
@@ -65,6 +69,7 @@ router.post('/solicitar-vinculacion', async (req, res) => {
 });
 
 // La TV consulta si el celular ya autorizó el código.
+/** Informa a la TV si su código sigue pendiente, expiró o ya fue vinculado. */
 router.post('/estado-vinculacion', async (req, res) => {
   const { idDispositivo, secreto } = req.body;
   if (!idDispositivo || !secreto) {
@@ -111,6 +116,7 @@ router.post('/estado-vinculacion', async (req, res) => {
 });
 
 // El celular autoriza el código usando el usuario autenticado, nunca un ID del body.
+/** Vincula al usuario autenticado con el dispositivo identificado por su código. */
 router.post('/vincular', requireUser, async (req, res) => {
   const code = String(req.body.codigo || '').trim().toUpperCase();
   if (!code) return res.status(400).json({ error: 'El código es obligatorio' });
@@ -147,6 +153,7 @@ router.post('/vincular', requireUser, async (req, res) => {
 });
 
 // El celular crea directamente la identidad del reloj emparejado.
+/** Registra o reutiliza el Wear OS del usuario y emite su token de dispositivo. */
 router.post('/vincular-wear', requireUser, async (req, res) => {
   const name = String(req.body.nombre || 'Ruta Libre Wear OS').trim();
   const deviceSecret = crypto.randomBytes(32).toString('base64url');
@@ -184,6 +191,7 @@ router.post('/vincular-wear', requireUser, async (req, res) => {
   }
 });
 
+/** Lista los dispositivos activos vinculados al usuario autenticado. */
 router.get('/', requireUser, async (req, res) => {
   try {
     const result = await db.query(
@@ -206,6 +214,7 @@ router.get('/', requireUser, async (req, res) => {
   }
 });
 
+/** Cierra la sesión del dispositivo que presenta el token actual. */
 router.delete('/sesion/actual', requireDevice, async (req, res) => {
   try {
     await db.query(
@@ -220,6 +229,7 @@ router.delete('/sesion/actual', requireDevice, async (req, res) => {
   }
 });
 
+/** Comprueba que la sesión del dispositivo actual siga activa. */
 router.get('/sesion/actual', requireDevice, async (req, res) => {
   try {
     const result = await db.query(
@@ -235,6 +245,7 @@ router.get('/sesion/actual', requireDevice, async (req, res) => {
   }
 });
 
+/** Revoca todas las sesiones del usuario y avisa al resto de dispositivos por MQTT. */
 router.delete('/sesion/todos', requireUser, async (req, res) => {
   try {
     await db.query(
@@ -253,6 +264,7 @@ router.delete('/sesion/todos', requireUser, async (req, res) => {
   }
 });
 
+/** Desvincula un dispositivo del usuario y publica el evento correspondiente. */
 router.delete('/:idDispositivo', requireUser, async (req, res) => {
   try {
     const result = await db.query(
