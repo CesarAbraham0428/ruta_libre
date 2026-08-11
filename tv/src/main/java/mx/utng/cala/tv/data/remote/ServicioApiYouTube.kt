@@ -6,8 +6,10 @@ import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
 
+/** Define las consultas Retrofit realizadas contra YouTube Data API. */
 interface ServicioApiYouTube {
 
+    /** Busca videos de running con filtros aptos para reproduccion. */
     @GET("search")
     suspend fun buscarVideos(
         @Query("part") parte: String = "snippet",
@@ -24,6 +26,7 @@ interface ServicioApiYouTube {
         @Query("key") clave: String
     ): Response<RespuestaBusquedaYouTube>
 
+    /** Obtiene duracion y cantidad de vistas de los videos encontrados. */
     @GET("videos")
     suspend fun obtenerDetallesVideos(
         @Query("part") parte: String = "contentDetails,statistics",

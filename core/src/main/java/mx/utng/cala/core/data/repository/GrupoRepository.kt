@@ -9,11 +9,13 @@ import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 import mx.utng.cala.core.data.dto.response.RankingResponse
 import mx.utng.cala.core.data.remote.RetrofitClient
 
+/** Gestiona la consulta y administracion de grupos de entrenamiento. */
 class GrupoRepository {
 
     private val api = RetrofitClient.apiService
     private val gson = Gson()
 
+    /** Obtiene el mensaje de error del backend o usa un texto alternativo. */
     private fun errorMessage(response: retrofit2.Response<*>, fallback: String): String {
         return try {
             val body = response.errorBody()?.string()
@@ -24,6 +26,7 @@ class GrupoRepository {
         }
     }
 
+    /** Crea un grupo y registra al usuario como creador. */
     suspend fun crearGrupo(nombre: String, descripcion: String?, idUsuario: Int): Result<GrupoResponse> {
         return try {
             val response = api.crearGrupo(CrearGrupoRequest(nombre, descripcion, idUsuario))
@@ -36,6 +39,7 @@ class GrupoRepository {
         }
     }
 
+    /** Une al usuario a un grupo mediante un codigo de invitacion. */
     suspend fun unirseGrupo(idUsuario: Int, codigo: String): Result<Unit> {
         return try {
             val response = api.unirseGrupo(UnirseGrupoRequest(idUsuario, codigo))
@@ -46,6 +50,7 @@ class GrupoRepository {
         }
     }
 
+    /** Obtiene los grupos asociados al usuario. */
     suspend fun getGrupos(idUsuario: Int): Result<List<GrupoResponse>> {
         return try {
             val response = api.getGruposUsuario(idUsuario)
@@ -58,6 +63,7 @@ class GrupoRepository {
         }
     }
 
+    /** Consulta los miembros y sus metricas actuales. */
     suspend fun getMiembros(idGrupo: Int): Result<List<MiembroGrupoResponse>> {
         return try {
             val response = api.getMiembrosGrupo(idGrupo)
@@ -70,6 +76,7 @@ class GrupoRepository {
         }
     }
 
+    /** Obtiene las estadisticas semanales de un miembro. */
     suspend fun getEstadisticasMiembro(idUsuario: Int): Result<DashboardSemanalResponse> {
         return try {
             // Las estadísticas individuales deben ser exactamente las mismas
@@ -86,6 +93,7 @@ class GrupoRepository {
         }
     }
 
+    /** Consulta el ranking de rendimiento del grupo. */
     suspend fun getRanking(idGrupo: Int): Result<RankingResponse> {
         return try {
             val response = api.getRankingGrupo(idGrupo)
@@ -98,6 +106,7 @@ class GrupoRepository {
         }
     }
 
+    /** Retira al usuario del grupo indicado. */
     suspend fun salirDeGrupo(idUsuario: Int, idGrupo: Int): Result<Unit> {
         return try {
             val response = api.salirDeGrupo(idGrupo, idUsuario)
@@ -108,6 +117,7 @@ class GrupoRepository {
         }
     }
 
+    /** Elimina un grupo cuando el usuario tiene permisos de creador. */
     suspend fun eliminarGrupo(idGrupo: Int, idUsuario: Int): Result<Unit> {
         return try {
             val response = api.eliminarGrupo(idGrupo, idUsuario)

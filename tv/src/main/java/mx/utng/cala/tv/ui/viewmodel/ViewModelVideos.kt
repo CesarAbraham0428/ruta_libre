@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import mx.utng.cala.tv.data.model.VideoRutaLibre
 import mx.utng.cala.tv.data.repository.RepositorioYouTube
 
+/** Estado observable de filtros, videos, carga y seleccion actual. */
 data class EstadoUiVideos(
     val estaCargando: Boolean = false,
     val listaVideos: List<VideoRutaLibre> = emptyList(),
@@ -23,6 +24,7 @@ data class EstadoUiVideos(
     val error: String? = null
 )
 
+/** Gestiona busqueda, filtros y seleccion de videos para la TV. */
 class ViewModelVideos : ViewModel() {
 
     private val repositorio = RepositorioYouTube()
@@ -60,6 +62,7 @@ class ViewModelVideos : ViewModel() {
         }
     }
 
+    /** Cambia la categoria principal y recarga los videos. */
     fun cambiarFiltro(nuevoFiltro: String) {
         _estadoUi.update {
             it.copy(filtroActivo = nuevoFiltro, subfiltroActivo = "Todos", videoSeleccionado = null)
@@ -67,25 +70,30 @@ class ViewModelVideos : ViewModel() {
         cargarVideos()
     }
 
+    /** Cambia el nivel de contenido y recarga los resultados. */
     fun cambiarSubfiltro(nuevoSubfiltro: String) {
         _estadoUi.update { it.copy(subfiltroActivo = nuevoSubfiltro, videoSeleccionado = null) }
         cargarVideos()
     }
 
+    /** Actualiza el texto de busqueda aplicando debounce en la carga. */
     fun buscarPorTexto(texto: String) {
         _estadoUi.update { it.copy(terminoBusqueda = texto, videoSeleccionado = null) }
         cargarVideos(aplicarEspera = true)
     }
 
+    /** Define el video que se mostrara en el reproductor. */
     fun seleccionarVideo(video: VideoRutaLibre?) {
         _estadoUi.update { it.copy(videoSeleccionado = video) }
     }
 
+    /** Cancela la carga pendiente cuando se destruye el ViewModel. */
     override fun onCleared() {
         trabajoCarga?.cancel()
         super.onCleared()
     }
 
+    /** Construye la consulta combinando texto, categoria y subfiltro. */
     private fun construirConsulta(): String {
         val estado = _estadoUi.value
         return when {

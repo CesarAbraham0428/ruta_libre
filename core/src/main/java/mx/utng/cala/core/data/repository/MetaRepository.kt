@@ -6,10 +6,12 @@ import mx.utng.cala.core.data.dto.response.MetaResponse
 import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.remote.RetrofitClient
 
+/** Expone las operaciones CRUD de metas personales. */
 class MetaRepository {
 
     private val api = RetrofitClient.apiService
 
+    /** Crea una meta con tipo y valor objetivo. */
     suspend fun crearMeta(idUsuario: Int, tipoMeta: TipoMeta, valorObjetivo: Double): Result<MetaResponse> {
         return try {
             val response = api.crearMeta(CrearMetaRequest(idUsuario, tipoMeta, valorObjetivo))
@@ -20,6 +22,7 @@ class MetaRepository {
         }
     }
 
+    /** Lista las metas del usuario. */
     suspend fun getMetas(idUsuario: Int): Result<List<MetaResponse>> {
         return try {
             val response = api.getMetas(idUsuario)
@@ -30,6 +33,7 @@ class MetaRepository {
         }
     }
 
+    /** Cambia el valor objetivo de una meta existente. */
     suspend fun actualizarMeta(idMetas: Int, valorObjetivo: Double): Result<MetaResponse> {
         return try {
             val response = api.actualizarMeta(idMetas, ActualizarMetaRequest(valorObjetivo))
@@ -40,6 +44,7 @@ class MetaRepository {
         }
     }
 
+    /** Elimina una meta del backend. */
     suspend fun eliminarMeta(idMetas: Int): Result<Unit> {
         return try {
             val response = api.eliminarMeta(idMetas)

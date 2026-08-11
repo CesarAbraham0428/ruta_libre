@@ -1,5 +1,6 @@
 package mx.utng.cala.core.data.model
 
+/** Modelo de dominio con los datos de un entrenamiento. */
 data class Entrenamiento(
     val idEntrenamiento: Int = 0,
     val idUsuario: Int = 0,
@@ -13,6 +14,7 @@ data class Entrenamiento(
     val puntoFin: Punto? = null
 )
 
+/** Coordenada geografica usada como inicio o fin de una ruta. */
 data class Punto(
     val longitud: Double = 0.0,
     val latitud: Double = 0.0

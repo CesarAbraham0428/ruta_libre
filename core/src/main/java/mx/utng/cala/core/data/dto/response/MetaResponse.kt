@@ -1,5 +1,6 @@
 package mx.utng.cala.core.data.dto.response
 
+/** Estado de una meta con su avance actual y objetivo. */
 data class MetaResponse(
     val idMetas: Int,
     val idUsuario: Int,

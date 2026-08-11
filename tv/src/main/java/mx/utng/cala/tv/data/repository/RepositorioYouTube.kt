@@ -13,8 +13,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/** Error de dominio para respuestas no exitosas de YouTube. */
 class ErrorApiYouTube(message: String) : Exception(message)
 
+/** Consulta videos de YouTube y conserva un fallback local para la TV. */
 class RepositorioYouTube {
 
     private val terminosAtleticos = listOf(
@@ -114,6 +116,7 @@ class RepositorioYouTube {
         )
     )
 
+    /** Filtra la lista local cuando la API no esta disponible. */
     private fun obtenerVideosSimulados(consulta: String, categoria: String): List<VideoRutaLibre> {
         val palabrasConsulta = consulta.lowercase().trim().split("\\s+".toRegex()).filter { it.isNotBlank() }
         val categoriaLimpia = if (categoria == "Videos") "" else categoria
@@ -196,6 +199,7 @@ class RepositorioYouTube {
         }
     }
 
+    /** Verifica que el resultado trate sobre running y no sobre musica u ocio. */
     private fun esContenidoAtletico(titulo: String, descripcion: String, canal: String): Boolean {
         val contenido = "$titulo $descripcion $canal".lowercase(Locale.ROOT)
         val estaExcluido = terminosExcluidos.any(contenido::contains)
@@ -203,6 +207,7 @@ class RepositorioYouTube {
         return esAtletico && !estaExcluido
     }
 
+    /** Convierte un codigo HTTP de YouTube en un error descriptivo. */
     private fun validarRespuesta(respuesta: Response<*>, accion: String) {
         if (respuesta.isSuccessful) return
         val causa = when (respuesta.code()) {
@@ -214,6 +219,7 @@ class RepositorioYouTube {
         throw ErrorApiYouTube("No se pudo $accion. $causa")
     }
 
+    /** Convierte una fecha ISO de YouTube a un formato legible. */
     private fun formatearFecha(fechaIso: String): String = try {
         val entrada = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
         val salida = SimpleDateFormat("dd MMM yyyy", Locale("es", "MX"))
@@ -222,6 +228,7 @@ class RepositorioYouTube {
         fechaIso
     }
 
+    /** Convierte una duracion ISO 8601 a minutos y segundos. */
     private fun formatearDuracion(duracionIso: String): String {
         val coincidencia = Regex("PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?").matchEntire(duracionIso)
             ?: return duracionIso
@@ -232,6 +239,7 @@ class RepositorioYouTube {
         else "%d:%02d".format(minutos, segundos)
     }
 
+    /** Abrevia la cantidad de vistas usando miles o millones. */
     private fun formatearVistas(vistas: String): String {
         val cantidad = vistas.toLongOrNull() ?: return "$vistas vistas"
         val texto = when {

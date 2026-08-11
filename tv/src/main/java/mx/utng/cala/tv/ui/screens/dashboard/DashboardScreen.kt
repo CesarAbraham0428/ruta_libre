@@ -35,6 +35,7 @@ import kotlin.math.abs
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Renderiza el dashboard principal con metricas y comparativas. */
 fun DashboardScreen(
     navController: NavController,
     idUsuario: Int,
@@ -214,6 +215,7 @@ fun DashboardScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el encabezado, saludo y selector de periodo del dashboard. */
 fun FilaCabecera(
     periodo: PeriodoDashboard,
     alCambiarPeriodo: (PeriodoDashboard) -> Unit,
@@ -265,6 +267,7 @@ fun FilaCabecera(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Dibuja un boton para alternar entre semana y mes. */
 fun BotonTabPeriodo(
     texto: String,
     activo: Boolean,
@@ -296,6 +299,7 @@ fun BotonTabPeriodo(
 }
 
 @Composable
+/** Organiza las tarjetas acumuladas de distancia, pasos, calorias y tiempo. */
 fun FilaTarjetasTotales(
     distancia: Double,
     pasos: Int,
@@ -356,6 +360,7 @@ fun FilaTarjetasTotales(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Presenta una metrica acumulada con su tendencia y formato. */
 fun TarjetaMetrica(
     titulo: String,
     valor: String,
@@ -445,6 +450,7 @@ fun TarjetaMetrica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el avance y la comparacion general del periodo seleccionado. */
 fun TarjetaProgresoComparativa(
     comparacion: ComparacionRendimientoResponse?,
     esMensual: Boolean,
@@ -539,6 +545,7 @@ fun TarjetaProgresoComparativa(
 }
 
 @Composable
+/** Renderiza una fila con el porcentaje de cambio de una metrica. */
 fun FilaComparacionMetrica(
     etiqueta: String,
     porcentaje: Double
@@ -591,6 +598,7 @@ fun FilaComparacionMetrica(
     }
 }
 
+/** Estados visuales usados para representar la tendencia del rendimiento. */
 enum class EstadoTendencia {
     MEJORA,
     EMPEORA,
@@ -600,6 +608,7 @@ enum class EstadoTendencia {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra una interpretacion general de la tendencia del usuario. */
 fun TarjetaTendenciaGeneral(
     comparacion: ComparacionRendimientoResponse?,
     sinDatos: Boolean = false
@@ -701,6 +710,7 @@ fun TarjetaTendenciaGeneral(
 
 // Helpers para formateo de rangos y tiempos
 
+/** Calcula el rango de fechas de la semana actual. */
 fun obtenerRangoSemanaActual(): String {
     val calendario = Calendar.getInstance()
     val diaSemana = calendario.get(Calendar.DAY_OF_WEEK)
@@ -731,11 +741,13 @@ fun obtenerRangoSemanaActual(): String {
     }
 }
 
+/** Calcula el nombre y rango del mes actual. */
 fun obtenerRangoMesActual(): String {
     val formatoMesAnio = SimpleDateFormat("MMMM 'de' yyyy", Locale("es", "MX"))
     return formatoMesAnio.format(Date()).replaceFirstChar { it.uppercase() }
 }
 
+/** Convierte segundos totales a horas y minutos legibles. */
 fun formatearTiempo(segundosTotales: Int): String {
     val horas = segundosTotales / 3600
     val minutos = (segundosTotales % 3600) / 60
@@ -743,6 +755,7 @@ fun formatearTiempo(segundosTotales: Int): String {
     return String.format("%02d:%02d:%02d", horas, minutos, segundos)
 }
 
+/** Convierte el rendimiento semanal o mensual al modelo del grafico. */
 fun mapperPuntosGrafico(
     semanal: DashboardSemanalResponse?,
     mensual: RespuestaDashboardMensual?,
@@ -775,6 +788,7 @@ fun mapperPuntosGrafico(
 
 // Extensión para Text Alignment a la derecha
 @Composable
+/** Muestra un texto de error estilizado dentro del dashboard. */
 fun Text(
     text: String,
     style: androidx.compose.ui.text.TextStyle,

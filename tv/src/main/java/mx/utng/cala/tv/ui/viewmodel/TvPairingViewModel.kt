@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.repository.DispositivoRepository
 import mx.utng.cala.tv.data.TvIdentityStore
 
+/** Estado observable del codigo y la sesion vinculada de la TV. */
 data class TvPairingUiState(
     val cargando: Boolean = true,
     val codigo: String? = null,
@@ -18,6 +19,7 @@ data class TvPairingUiState(
     val error: String? = null
 )
 
+/** Controla la vinculacion, validacion y cierre de sesion de la TV. */
 class TvPairingViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = DispositivoRepository()
     private val store = TvIdentityStore(application)
@@ -30,6 +32,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         if (store.idUsuario == null || store.token == null) solicitarCodigo() else validarSesionGuardada()
     }
 
+    /** Comprueba periodicamente que el token guardado siga vigente. */
     private fun validarSesionGuardada() {
         viewModelScope.launch {
             while (isActive && _uiState.value.idUsuario != null) {
@@ -45,6 +48,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Borra la sesion local y reinicia el proceso de vinculacion. */
     private fun limpiarSesionYGenerarCodigo() {
         if (_uiState.value.idUsuario == null && _uiState.value.cargando) return
         store.clear()
@@ -52,6 +56,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         solicitarCodigo()
     }
 
+    /** Solicita un codigo temporal y comienza a esperar su autorizacion. */
     fun solicitarCodigo() {
         viewModelScope.launch {
             _uiState.value = TvPairingUiState(cargando = true)
@@ -67,6 +72,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Consulta hasta que el codigo sea vinculado o expire. */
     private suspend fun esperarAutorizacion(idDispositivo: String, secreto: String) {
         while (viewModelScope.isActive && _uiState.value.idUsuario == null) {
             delay(2_500)
@@ -99,6 +105,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Cierra la sesion actual en el backend y reinicia la vinculacion. */
     fun cerrarSesion() {
         viewModelScope.launch {
             store.token?.let { repository.cerrarSesionDispositivo(it) }
@@ -106,6 +113,7 @@ class TvPairingViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Atiende una orden MQTT de cierre de sesion remoto. */
     fun cerrarSesionRemota() {
         limpiarSesionYGenerarCodigo()
     }

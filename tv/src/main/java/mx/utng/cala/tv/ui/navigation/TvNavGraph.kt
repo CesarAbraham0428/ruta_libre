@@ -14,6 +14,7 @@ import mx.utng.cala.tv.ui.screens.videos.VideosScreen
 import mx.utng.cala.tv.ui.screens.vinculacion.VinculacionTvScreen
 import mx.utng.cala.tv.ui.viewmodel.TvPairingViewModel
 
+/** Rutas disponibles dentro de la aplicacion para TV. */
 object TvRoutes {
     const val DASHBOARD = "dashboard"
     const val GRUPOS = "grupos"
@@ -22,6 +23,7 @@ object TvRoutes {
 }
 
 @Composable
+/** Conecta el estado de vinculacion con las pantallas navegables de la TV. */
 fun TvNavGraph(
     navController: NavHostController,
     remoteLogoutSignal: Int,

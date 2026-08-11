@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Typography
 
+/** Define la tipografia Material usada por la interfaz de TV. */
 // Set of Material typography styles to start with
 @OptIn(ExperimentalTvMaterial3Api::class)
 val Typography = Typography(

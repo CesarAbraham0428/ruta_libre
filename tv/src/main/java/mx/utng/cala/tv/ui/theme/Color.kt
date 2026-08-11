@@ -2,6 +2,7 @@ package mx.utng.cala.tv.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/** Paleta de marca utilizada por las pantallas de Ruta Libre TV. */
 // Brand
 val Primary = Color(0xFF7ED957)
 val PrimaryContainer = Color(0xFF1B5E20)

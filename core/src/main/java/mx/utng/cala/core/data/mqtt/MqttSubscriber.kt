@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+/** Configuracion de conexion al broker MQTT. */
 data class MqttConfig(
     val host: String,
     val port: Int,
@@ -20,10 +21,13 @@ data class MqttConfig(
     val clientPrefix: String
 )
 
+/** Estados posibles de la conexion MQTT compartida. */
 enum class MqttSubscriberStatus { DISCONNECTED, CONNECTING, CONNECTED, ERROR }
 
+/** Mensaje recibido desde un topic MQTT suscrito. */
 data class MqttSubscriberEvent(val topic: String, val payload: String)
 
+/** Administra la conexion MQTT y publica eventos recibidos por usuario. */
 class MqttSubscriber(
     private val config: MqttConfig,
     private val logTag: String
@@ -37,6 +41,7 @@ class MqttSubscriber(
     private var client: Mqtt3AsyncClient? = null
     private var currentUserId: Int? = null
 
+    /** Conecta al broker y suscribe el usuario a sus eventos. */
     fun connect(userId: Int) {
         if (currentUserId == userId && client?.state == MqttClientState.CONNECTED) return
         disconnect()
@@ -77,6 +82,7 @@ class MqttSubscriber(
             }
     }
 
+    /** Registra la suscripcion al topic privado del usuario. */
     private fun subscribe(mqttClient: Mqtt3AsyncClient, userId: Int) {
         mqttClient.subscribeWith()
             .topicFilter("rutalibre/usuarios/$userId/#")
@@ -101,6 +107,7 @@ class MqttSubscriber(
             }
     }
 
+    /** Cierra la conexion activa y restablece el estado inicial. */
     fun disconnect() {
         val previousClient = client
         client = null

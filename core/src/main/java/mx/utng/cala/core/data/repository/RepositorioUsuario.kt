@@ -5,10 +5,12 @@ import mx.utng.cala.core.data.dto.request.ActualizarPesoPeticion
 import mx.utng.cala.core.data.dto.response.UsuarioResponse
 import mx.utng.cala.core.data.remote.RetrofitClient
 
+/** Coordina las consultas y actualizaciones del perfil de usuario. */
 class RepositorioUsuario {
 
     private val servicioApi = RetrofitClient.apiService
 
+    /** Obtiene los datos del perfil indicado. */
     suspend fun obtenerUsuario(idUsuario: Int): Result<UsuarioResponse> {
         return try {
             val respuesta = servicioApi.getUsuario(idUsuario)
@@ -22,6 +24,7 @@ class RepositorioUsuario {
         }
     }
 
+    /** Actualiza nombre, contrasena y peso opcional del usuario. */
     suspend fun actualizarUsuario(idUsuario: Int, nombre: String, contrasena: String?, pesoKg: Double?): Result<Unit> {
         return try {
             val peticion = ActualizarUsuarioPeticion(nombre, contrasena, pesoKg)
@@ -36,6 +39,7 @@ class RepositorioUsuario {
         }
     }
 
+    /** Guarda el peso del usuario sin modificar el resto del perfil. */
     suspend fun actualizarPeso(idUsuario: Int, pesoKg: Double): Result<Unit> {
         return try {
             val respuesta = servicioApi.actualizarPeso(idUsuario, ActualizarPesoPeticion(pesoKg))

@@ -7,10 +7,12 @@ import mx.utng.cala.core.data.model.Coordenada
 import mx.utng.cala.core.data.model.Punto
 import mx.utng.cala.core.data.remote.RetrofitClient
 
+/** Gestiona las consultas y actualizaciones de entrenamientos. */
 class EntrenamientoRepository {
 
     private val api = RetrofitClient.apiService
 
+    /** Inicia un nuevo entrenamiento para el usuario. */
     suspend fun iniciar(idUsuario: Int): Result<EntrenamientoResponse> {
         return try {
             val response = api.iniciarEntrenamiento(IniciarEntrenamientoRequest(idUsuario))
@@ -21,6 +23,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Guarda las metricas y coordenadas de un entrenamiento finalizado. */
     suspend fun finalizar(
         idEntrenamiento: Int,
         pasos: Int,
@@ -44,6 +47,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Obtiene el entrenamiento que el usuario tiene activo. */
     suspend fun getActivo(idUsuario: Int): Result<EntrenamientoActivoResponse> {
         return try {
             val response = api.getEntrenamientoActivo(idUsuario)
@@ -54,6 +58,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Recupera el historial de entrenamientos del usuario. */
     suspend fun getHistorial(idUsuario: Int): Result<List<EntrenamientoResponse>> {
         return try {
             val response = api.getHistorialEntrenamientos(idUsuario)
@@ -64,6 +69,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Consulta el dashboard con metricas diarias de la semana. */
     suspend fun getDashboardSemanal(idUsuario: Int): Result<DashboardSemanalResponse> {
         return try {
             val response = api.getDashboardSemanal(idUsuario)
@@ -74,6 +80,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Consulta el dashboard agrupado por semanas del mes. */
     suspend fun obtenerDashboardMensual(idUsuario: Int): Result<RespuestaDashboardMensual> {
         return try {
             val response = api.obtenerDashboardMensual(idUsuario)
@@ -84,6 +91,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Obtiene la comparacion del rendimiento semanal. */
     suspend fun getComparacion(idUsuario: Int): Result<ComparacionRendimientoResponse> {
         return try {
             val response = api.getComparacionRendimiento(idUsuario)
@@ -94,6 +102,7 @@ class EntrenamientoRepository {
         }
     }
 
+    /** Obtiene la comparacion del rendimiento mensual. */
     suspend fun obtenerComparacionMensual(idUsuario: Int): Result<ComparacionRendimientoResponse> {
         return try {
             val response = api.obtenerComparacionMensual(idUsuario)

@@ -6,11 +6,13 @@ import mx.utng.cala.core.data.dto.request.RegisterRequest
 import mx.utng.cala.core.data.dto.response.LoginResponse
 import mx.utng.cala.core.data.remote.RetrofitClient
 
+/** Coordina las operaciones de registro e inicio de sesion. */
 class AuthRepository {
 
     private val api = RetrofitClient.apiService
     private val gson = Gson()
 
+    /** Extrae el mensaje de error enviado por la API. */
     private fun parseError(response: retrofit2.Response<*>): String {
         return try {
             val errorBody = response.errorBody()?.string()
@@ -25,6 +27,7 @@ class AuthRepository {
         }
     }
 
+    /** Autentica al usuario y devuelve sus datos junto con el token. */
     suspend fun login(nombreUsuario: String, password: String): Result<LoginResponse> {
         return try {
             val response = api.login(LoginRequest(nombreUsuario, password))
@@ -38,6 +41,7 @@ class AuthRepository {
         }
     }
 
+    /** Registra una cuenta nueva y transforma la respuesta en un Result. */
     suspend fun register(nombre: String, nombreUsuario: String, password: String): Result<Unit> {
         return try {
             val response = api.register(RegisterRequest(nombre, nombreUsuario, password))

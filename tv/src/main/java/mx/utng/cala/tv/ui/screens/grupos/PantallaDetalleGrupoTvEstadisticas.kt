@@ -32,6 +32,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra actividad, miembros y estadisticas individuales de un grupo. */
 fun PantallaDetalleGrupoTv(
     idGrupo: Int,
     idUsuarioActual: Int,
@@ -89,6 +90,7 @@ fun PantallaDetalleGrupoTv(
     val scrollActividad = rememberLazyListState()
     val scrollEstadisticas = rememberLazyListState()
 
+    /** Selecciona el miembro anterior con navegacion circular. */
     fun navegarMiembroAnterior() {
         if (miembros.isNotEmpty()) {
             miembroSeleccionadoIndice =
@@ -96,6 +98,7 @@ fun PantallaDetalleGrupoTv(
         }
     }
 
+    /** Selecciona el miembro siguiente con navegacion circular. */
     fun navegarMiembroSiguiente() {
         if (miembros.isNotEmpty()) {
             miembroSeleccionadoIndice = (miembroSeleccionadoIndice + 1) % miembros.size
@@ -530,6 +533,7 @@ fun PantallaDetalleGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Renderiza el texto de una pestana del detalle de grupo. */
 private fun TextoPestanaTv(texto: String, activa: Boolean) {
     Text(
         text = texto,
@@ -542,6 +546,7 @@ private fun TextoPestanaTv(texto: String, activa: Boolean) {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Permite cambiar entre los miembros disponibles con el control remoto. */
 private fun SelectorMiembroTv(
     texto: String,
     onClick: () -> Unit,
@@ -568,6 +573,7 @@ private fun SelectorMiembroTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Solicita confirmacion antes de salir o eliminar un grupo. */
 private fun DialogoConfirmacionGrupoTv(
     visible: Boolean,
     titulo: String,
@@ -632,6 +638,7 @@ private val leyendaGraficaIndividualTv = listOf(
 private val diasSemanaGraficaTv = listOf("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom")
 private val proporcionesSemanaGrupoTv = listOf(0.08, 0.12, 0.18, 0.20, 0.17, 0.16, 0.09)
 
+/** Convierte los datos grupales en puntos para el grafico semanal. */
 private fun generarPuntosGraficaGrupoTv(
     miembros: List<MiembroGrupoResponse>
 ): List<PuntoDatosGrafica> {
@@ -652,6 +659,7 @@ private fun generarPuntosGraficaGrupoTv(
     }
 }
 
+/** Convierte las estadisticas individuales en puntos graficables. */
 private fun generarPuntosGraficaMiembroTv(
     estadisticas: DashboardSemanalResponse?
 ): List<PuntoDatosGrafica> {
@@ -666,6 +674,7 @@ private fun generarPuntosGraficaMiembroTv(
     } ?: emptyList()
 }
 
+/** Formatea el tiempo acumulado del grupo como horas y minutos. */
 private fun formatearTiempoGrupoTv(segundosTotales: Int): String {
     val horas = segundosTotales / 3600
     val minutos = (segundosTotales % 3600) / 60

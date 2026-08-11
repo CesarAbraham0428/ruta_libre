@@ -38,6 +38,7 @@ import mx.utng.cala.tv.ui.theme.SurfaceVariant
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Renderiza la barra lateral colapsable y sus opciones de navegacion. */
 fun BarraLateralTv(
     navController: NavController,
     rutaSeleccionada: String,
@@ -176,6 +177,7 @@ fun BarraLateralTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Dibuja una opcion enfocables del menu lateral de la TV. */
 fun ElementoMenuLateral(
     texto: String,
     icono: ImageVector,

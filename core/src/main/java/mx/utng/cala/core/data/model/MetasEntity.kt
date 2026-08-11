@@ -1,5 +1,6 @@
 package mx.utng.cala.core.data.model
 
+/** Modelo de dominio de una meta personal de rendimiento. */
 data class Meta(
     val idMetas: Int = 0,
     val idUsuario: Int = 0,
@@ -9,6 +10,7 @@ data class Meta(
     val terminada: Boolean = false
 )
 
+/** Tipos de metricas que puede perseguir una meta. */
 enum class TipoMeta {
     PASOS, CALORIAS, DISTANCIA, TIEMPO
 }

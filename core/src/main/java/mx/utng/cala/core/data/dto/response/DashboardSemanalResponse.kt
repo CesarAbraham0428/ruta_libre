@@ -1,5 +1,6 @@
 package mx.utng.cala.core.data.dto.response
 
+/** Totales y desglose diario del rendimiento semanal. */
 data class DashboardSemanalResponse(
     val distanciaTotal: Double,
     val pasosTotales: Int,
@@ -8,6 +9,7 @@ data class DashboardSemanalResponse(
     val rendimientoDiario: List<RendimientoDiarioResponse>
 )
 
+/** Metricas acumuladas de un dia del periodo consultado. */
 data class RendimientoDiarioResponse(
     val dia: String,
     val distancia: Double,

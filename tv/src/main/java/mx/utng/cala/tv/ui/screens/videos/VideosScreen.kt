@@ -57,6 +57,7 @@ import mx.utng.cala.tv.ui.theme.*
 import mx.utng.cala.tv.ui.viewmodel.EstadoUiVideos
 import mx.utng.cala.tv.ui.viewmodel.ViewModelVideos
 
+/** Estados de navegacion interna del modulo de videos. */
 enum class VistaVideosTv {
     PRINCIPAL,
     FILTROS,
@@ -65,6 +66,7 @@ enum class VistaVideosTv {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Coordina la lista, filtros y reproduccion de videos en la TV. */
 fun VideosScreen(
     navController: NavController,
     onCerrarSesion: () -> Unit,
@@ -585,6 +587,7 @@ fun ReproductorYouTube(
             factory = { contexto ->
                 WebView(contexto).also { webView ->
                     webView.webViewClient = object : WebViewClient() {
+                        /** Actualiza el estado cuando termina de cargar el iframe. */
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             if (url?.contains("youtube.com/embed/") == true) {
@@ -593,6 +596,7 @@ fun ReproductorYouTube(
                             }
                         }
 
+                        /** Muestra un error cuando falla la carga principal del WebView. */
                         override fun onReceivedError(
                             view: WebView?,
                             request: android.webkit.WebResourceRequest?,
@@ -605,6 +609,7 @@ fun ReproductorYouTube(
                             }
                         }
 
+                        /** Informa los errores HTTP devueltos por YouTube. */
                         override fun onReceivedHttpError(
                             view: WebView?,
                             request: android.webkit.WebResourceRequest?,
@@ -618,6 +623,7 @@ fun ReproductorYouTube(
                         }
                     }
                     webView.webChromeClient = object : WebChromeClient() {
+                        /** Autoriza solo el recurso multimedia protegido requerido. */
                         override fun onPermissionRequest(request: PermissionRequest) {
                             val permitidos = request.resources.filter {
                                 it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
@@ -628,6 +634,7 @@ fun ReproductorYouTube(
                             }
                         }
 
+                        /** Interpreta senales JavaScript de estado del reproductor. */
                         override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
                             val mensaje = consoleMessage.message()
                             when {
@@ -706,6 +713,7 @@ fun ReproductorYouTube(
     }
 }
 
+/** Abre la actividad de reproduccion a pantalla completa para un video. */
 private fun abrirReproductorIntegrado(contexto: Context, video: VideoRutaLibre) {
     contexto.startActivity(
         Intent(contexto, ReproductorVideoActivity::class.java).apply {
@@ -715,6 +723,7 @@ private fun abrirReproductorIntegrado(contexto: Context, video: VideoRutaLibre) 
     )
 }
 
+/** Traduce codigos del reproductor de YouTube a mensajes para el usuario. */
 private fun mensajeErrorYouTube(codigo: String): String = when (codigo) {
     "2" -> "YouTube rechazó el identificador del video (error 2)."
     "5" -> "Este video no puede reproducirse en el reproductor HTML5 (error 5)."

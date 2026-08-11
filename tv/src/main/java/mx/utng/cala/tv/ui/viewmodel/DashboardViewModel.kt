@@ -10,11 +10,13 @@ import mx.utng.cala.core.data.dto.response.DashboardSemanalResponse
 import mx.utng.cala.core.data.dto.response.RespuestaDashboardMensual
 import mx.utng.cala.core.data.repository.EntrenamientoRepository
 
+/** Periodos que puede mostrar el dashboard de la TV. */
 enum class PeriodoDashboard {
     SEMANAL,
     MENSUAL
 }
 
+/** Estado observable de datos, carga y errores del dashboard. */
 data class EstadoUiDashboard(
     val estaCargando: Boolean = false,
     val semanal: DashboardSemanalResponse? = null,
@@ -25,12 +27,14 @@ data class EstadoUiDashboard(
     val error: String? = null
 )
 
+/** Carga metricas del usuario y coordina el cambio de periodo. */
 class DashboardViewModel : ViewModel() {
 
     private val repositorio = EntrenamientoRepository()
     private val _estadoUi = MutableStateFlow(EstadoUiDashboard())
     val estadoUi: StateFlow<EstadoUiDashboard> = _estadoUi
 
+    /** Solicita y publica los totales diarios de la semana actual. */
     fun cargarDashboardSemanal(idUsuario: Int) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
@@ -41,6 +45,7 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
+    /** Solicita el cambio porcentual frente a la semana anterior. */
     fun cargarComparacionSemanal(idUsuario: Int) {
         viewModelScope.launch {
             repositorio.getComparacion(idUsuario).fold(
@@ -50,6 +55,7 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
+    /** Solicita y publica los totales agrupados del mes actual. */
     fun cargarDashboardMensual(idUsuario: Int) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
@@ -60,6 +66,7 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
+    /** Solicita el cambio porcentual frente al mes anterior. */
     fun cargarComparacionMensual(idUsuario: Int) {
         viewModelScope.launch {
             repositorio.obtenerComparacionMensual(idUsuario).fold(
@@ -69,6 +76,7 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
+    /** Cambia el periodo visible y carga sus datos correspondientes. */
     fun cambiarPeriodo(nuevoPeriodo: PeriodoDashboard, idUsuario: Int) {
         _estadoUi.value = _estadoUi.value.copy(periodoSeleccionado = nuevoPeriodo)
         if (nuevoPeriodo == PeriodoDashboard.SEMANAL) {

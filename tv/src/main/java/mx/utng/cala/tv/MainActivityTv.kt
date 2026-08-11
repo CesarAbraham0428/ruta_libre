@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 
+/** Punto de entrada de la experiencia Ruta Libre para Smart TV. */
 class MainActivityTv : ComponentActivity() {
     private var linkedUserId: Int? = null
     private var remoteLogoutSignal by mutableIntStateOf(0)
@@ -38,6 +39,7 @@ class MainActivityTv : ComponentActivity() {
     }
 
     @OptIn(ExperimentalTvMaterial3Api::class)
+    /** Inicializa identidad, MQTT, tema y grafo principal de navegacion. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         identityStore = TvIdentityStore(this)
@@ -73,11 +75,13 @@ class MainActivityTv : ComponentActivity() {
         }
     }
 
+    /** Reanuda la suscripcion MQTT cuando la actividad vuelve al frente. */
     override fun onStart() {
         super.onStart()
         linkedUserId?.let(mqttSubscriber::connect)
     }
 
+    /** Libera la conexion MQTT al abandonar la actividad. */
     override fun onStop() {
         mqttSubscriber.disconnect()
         super.onStop()

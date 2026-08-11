@@ -37,6 +37,7 @@ import mx.utng.cala.tv.ui.theme.Tiempo
 import java.util.Locale
 import kotlin.math.roundToInt
 
+/** Punto de datos usado para graficar una metrica por periodo. */
 data class PuntoDatosGrafica(
     val etiqueta: String,
     val distancia: Double,
@@ -45,6 +46,7 @@ data class PuntoDatosGrafica(
     val tiempo: Int = 0
 )
 
+/** Elemento visual que relaciona una metrica con su color. */
 data class ElementoLeyendaGrafica(
     val color: Color,
     val etiqueta: String
@@ -57,6 +59,7 @@ private val LeyendaGraficaPredeterminada = listOf(
     ElementoLeyendaGrafica(Tiempo, "Tiempo")
 )
 
+/** Metricas que puede representar el grafico de rendimiento. */
 private enum class TipoMetricaGrafica {
     DISTANCIA,
     PASOS,
@@ -64,6 +67,7 @@ private enum class TipoMetricaGrafica {
     TIEMPO
 }
 
+/** Configuracion de color y etiqueta para una metrica graficada. */
 private data class ConfiguracionMetricaGrafica(
     val tipo: TipoMetricaGrafica,
     val color: Color,
@@ -72,6 +76,7 @@ private data class ConfiguracionMetricaGrafica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Presenta un grafico navegable de rendimiento para la pantalla de TV. */
 fun TarjetaGraficaRendimiento(
     puntos: List<PuntoDatosGrafica>,
     titulo: String,
@@ -234,6 +239,7 @@ fun TarjetaGraficaRendimiento(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el estado vacio cuando no existen entrenamientos para graficar. */
 private fun EstadoVacioGrafica(
     mensaje: String,
     detalle: String
@@ -269,6 +275,7 @@ private fun EstadoVacioGrafica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Boton enfocable para cambiar la metrica visible del grafico. */
 private fun BotonNavegacionGrafica(
     texto: String,
     compacto: Boolean,
@@ -305,6 +312,7 @@ private fun BotonNavegacionGrafica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Construye el area de barras y escala de una metrica. */
 private fun GraficaMetricaPersonalizada(
     puntos: List<PuntoDatosGrafica>,
     metrica: ConfiguracionMetricaGrafica,
@@ -377,6 +385,7 @@ private fun GraficaMetricaPersonalizada(
     }
 }
 
+/** Dibuja las barras y lineas de referencia dentro del Canvas. */
 private fun DrawScope.dibujarBarrasGrafica(
     puntos: List<PuntoDatosGrafica>,
     metrica: ConfiguracionMetricaGrafica,
@@ -418,6 +427,7 @@ private fun DrawScope.dibujarBarrasGrafica(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Renderiza la escala vertical de valores del grafico. */
 private fun EscalaVerticalGrafica(
     maximo: Double,
     tipo: TipoMetricaGrafica,
@@ -441,6 +451,7 @@ private fun EscalaVerticalGrafica(
     }
 }
 
+/** Obtiene el valor numerico de una metrica en un punto. */
 private fun valorDeMetrica(
     punto: PuntoDatosGrafica,
     tipo: TipoMetricaGrafica
@@ -451,6 +462,7 @@ private fun valorDeMetrica(
     TipoMetricaGrafica.TIEMPO -> punto.tiempo.toDouble()
 }
 
+/** Formatea un valor para las marcas de la escala vertical. */
 private fun formatearValorEscala(valor: Double, tipo: TipoMetricaGrafica): String = when (tipo) {
     TipoMetricaGrafica.DISTANCIA -> String.format(Locale("es", "MX"), "%.2f", valor)
     TipoMetricaGrafica.PASOS,
@@ -458,6 +470,7 @@ private fun formatearValorEscala(valor: Double, tipo: TipoMetricaGrafica): Strin
     TipoMetricaGrafica.TIEMPO -> formatearTiempo(valor.roundToInt())
 }
 
+/** Formatea el valor que acompana a cada punto del grafico. */
 private fun formatearValorPunto(
     punto: PuntoDatosGrafica,
     tipo: TipoMetricaGrafica
@@ -468,6 +481,7 @@ private fun formatearValorPunto(
     TipoMetricaGrafica.TIEMPO -> formatearTiempo(punto.tiempo)
 }
 
+/** Convierte segundos a una cadena de tiempo HH:mm:ss. */
 private fun formatearTiempo(segundosTotales: Int): String {
     val horas = segundosTotales / 3600
     val minutos = (segundosTotales % 3600) / 60

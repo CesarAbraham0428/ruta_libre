@@ -8,6 +8,7 @@ import androidx.tv.material3.darkColorScheme
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Aplica el esquema oscuro y la tipografia de Ruta Libre TV. */
 fun RutaLibreTheme(
     isInDarkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit

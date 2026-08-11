@@ -33,6 +33,7 @@ import mx.utng.cala.tv.ui.theme.*
 import mx.utng.cala.tv.ui.viewmodel.EstadoUiGrupoTv
 import mx.utng.cala.tv.ui.viewmodel.GrupoTvViewModel
 
+/** Vistas principales del flujo de grupos en la TV. */
 enum class VistaGruposTv {
     PRINCIPAL,
     CREAR,
@@ -42,6 +43,7 @@ enum class VistaGruposTv {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Coordina la navegacion entre lista, creacion, union y detalle de grupos. */
 fun GruposTvScreen(
     navController: NavController,
     idUsuario: Int,
@@ -182,6 +184,7 @@ fun GruposTvScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra los grupos del usuario y las acciones disponibles. */
 fun PantallaPrincipalGruposTv(
     estadoUi: EstadoUiGrupoTv,
     solicitadorEnfoque: FocusRequester,
@@ -291,6 +294,7 @@ fun PantallaPrincipalGruposTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Presenta una tarjeta de accion para crear o unirse a un grupo. */
 fun TarjetaAccionGrupoTv(
     titulo: String,
     descripcion: String,
@@ -375,6 +379,7 @@ fun TarjetaAccionGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Renderiza la informacion resumida de un grupo del usuario. */
 fun TarjetaGrupoTv(
     nombre: String,
     descripcion: String?,
@@ -472,6 +477,7 @@ fun TarjetaGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el formulario para crear un grupo nuevo. */
 fun PantallaCrearGrupoTv(
     estaCargando: Boolean,
     solicitadorEnfoque: FocusRequester,
@@ -650,6 +656,7 @@ fun PantallaCrearGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el formulario para unirse mediante codigo de invitacion. */
 fun PantallaUnirseGrupoTv(
     estaCargando: Boolean,
     solicitadorEnfoque: FocusRequester,
@@ -826,6 +833,7 @@ fun PantallaUnirseGrupoTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Mantiene la vista legacy del detalle de grupo. */
 fun PantallaDetalleGrupoTvLegacy(
     idUsuarioActual: Int,
     idCreadorGrupo: Int?,
@@ -1181,6 +1189,7 @@ fun PantallaDetalleGrupoTvLegacy(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Presenta una metrica acumulada dentro del detalle del grupo. */
 fun TarjetaMetricaDetalleTv(
     titulo: String,
     valor: String,
@@ -1227,6 +1236,7 @@ fun TarjetaMetricaDetalleTv(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Dibuja una fila con el nombre y rendimiento de un miembro. */
 fun FilaMiembroGrupoTv(
     miembro: MiembroGrupoResponse
 ) {

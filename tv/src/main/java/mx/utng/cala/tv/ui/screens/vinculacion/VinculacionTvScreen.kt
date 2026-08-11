@@ -24,6 +24,7 @@ import mx.utng.cala.tv.ui.viewmodel.TvPairingUiState
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+/** Muestra el codigo y el estado del proceso de vinculacion de la TV. */
 fun VinculacionTvScreen(state: TvPairingUiState, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().background(Background).padding(48.dp),

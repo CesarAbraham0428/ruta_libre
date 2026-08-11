@@ -1,5 +1,6 @@
 package mx.utng.cala.core.data.dto.response
 
+/** Informacion basica de un grupo disponible para el usuario. */
 data class GrupoResponse(
     val idGrupo: Int,
     val nombre: String,
@@ -8,6 +9,7 @@ data class GrupoResponse(
     val idCreador: Int? = null
 )
 
+/** Miembro de grupo junto con sus metricas de rendimiento. */
 data class MiembroGrupoResponse(
     val idUsuario: Int,
     val nombre: String,
@@ -18,6 +20,7 @@ data class MiembroGrupoResponse(
     val tiempo: Int
 )
 
+/** Lista ordenada de miembros que representa el ranking del grupo. */
 data class RankingResponse(
     val miembros: List<MiembroGrupoResponse>
 )

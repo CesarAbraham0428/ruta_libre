@@ -27,6 +27,7 @@ class ReproductorVideoActivity : Activity() {
     private lateinit var webView: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
+    /** Configura la reproduccion YouTube en pantalla completa y con D-pad. */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -113,6 +114,7 @@ class ReproductorVideoActivity : Activity() {
         webView = WebView(this).apply {
             webViewClient = WebViewClient()
             webChromeClient = object : WebChromeClient() {
+                /** Concede al WebView unicamente el permiso multimedia necesario. */
                 override fun onPermissionRequest(request: PermissionRequest) {
                     val permitidos = request.resources.filter {
                         it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
@@ -168,6 +170,7 @@ class ReproductorVideoActivity : Activity() {
         volver.requestFocus()
     }
 
+    /** Libera el WebView para evitar fugas y detener la reproduccion. */
     override fun onDestroy() {
         if (::webView.isInitialized) {
             webView.stopLoading()
@@ -180,6 +183,7 @@ class ReproductorVideoActivity : Activity() {
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
+    /** Claves usadas para enviar los datos del video a la actividad. */
     companion object {
         const val EXTRA_ID_VIDEO = "id_video"
         const val EXTRA_TITULO_VIDEO = "titulo_video"

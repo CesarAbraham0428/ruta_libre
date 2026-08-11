@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+/** Provee el cliente Retrofit configurado para consumir el backend. */
 object RetrofitClient {
 
     private val httpClient = OkHttpClient.Builder()
@@ -22,5 +23,6 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
+    /** Servicio REST listo para ser usado por los repositorios. */
     val apiService: ApiService = retrofit.create(ApiService::class.java)
 }
