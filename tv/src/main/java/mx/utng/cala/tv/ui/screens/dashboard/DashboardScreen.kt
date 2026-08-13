@@ -110,6 +110,10 @@ fun DashboardScreen(
                         Text("Ocurrió un error al cargar los datos", style = MaterialTheme.typography.bodyLarge, color = Error)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(estadoUi.error ?: "", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.reintentar(idUsuario) }) {
+                            Text("Reintentar")
+                        }
                     }
                 }
             } else {

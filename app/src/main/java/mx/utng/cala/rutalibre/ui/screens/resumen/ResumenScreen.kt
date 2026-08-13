@@ -57,6 +57,7 @@ import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.theme.Tiempo
 import mx.utng.cala.rutalibre.ui.viewmodel.HistorialViewModel
 
+/** Muestra las métricas principales y la fecha de un entrenamiento finalizado. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResumenScreen(
@@ -186,6 +187,7 @@ fun ResumenScreen(
     }
 }
 
+/** Presenta una métrica individual dentro del resumen del entrenamiento. */
 @Composable
 private fun SummaryMetric(
     label: String,

@@ -46,6 +46,7 @@ import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.PesoViewModel
 
+/** Solicita el peso inicial necesario para calcular calorías y métricas personales. */
 @Composable
 fun PesoInicialScreen(
     navController: NavController,

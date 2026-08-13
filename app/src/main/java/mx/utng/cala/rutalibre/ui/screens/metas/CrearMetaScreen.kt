@@ -23,6 +23,7 @@ import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.MetasViewModel
 
+/** Presenta el formulario para crear una nueva meta personal. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearMetaScreen(
@@ -312,6 +313,7 @@ fun CrearMetaScreen(
     }
 }
 
+/** Define los datos visuales y la unidad de un tipo de meta seleccionable. */
 private data class TipoMetaInfo(
     val icon: ImageVector,
     val displayName: String,

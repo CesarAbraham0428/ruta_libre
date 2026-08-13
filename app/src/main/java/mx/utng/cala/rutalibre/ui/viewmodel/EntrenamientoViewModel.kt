@@ -19,6 +19,7 @@ import mx.utng.cala.rutalibre.data.location.LocationTracker
 import mx.utng.cala.rutalibre.data.location.StepCounterTracker
 import kotlin.math.roundToInt
 
+/** Estado de una sesión de entrenamiento, sus métricas y el recorrido GPS. */
 data class EntrenamientoUiState(
     val isLoading: Boolean = false,
     val idEntrenamiento: Int? = null,
@@ -35,6 +36,7 @@ data class EntrenamientoUiState(
     val error: String? = null
 )
 
+/** Coordina GPS, pasos, cronómetro y persistencia del entrenamiento activo. */
 class EntrenamientoViewModel(application: Application) : AndroidViewModel(application) {
     private val entrenamientoRepository = EntrenamientoRepository()
     private val locationTracker = LocationTracker(application)
@@ -52,6 +54,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
     private var pesoKg: Double = 70.0
     private var metricasExternasActivas = false
 
+    /** Reinicia el estado cuando se vuelve a abrir la pantalla tras finalizar una sesión. */
     fun prepararPantalla() {
         if (!_uiState.value.finalizado) return
 
@@ -60,6 +63,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         _uiState.value = EntrenamientoUiState()
     }
 
+    /** Crea un entrenamiento remoto y activa la captura de ubicación, pasos y tiempo. */
     fun iniciar(idUsuario: Int, pesoKg: Double) {
         if (_uiState.value.estaActivo || _uiState.value.isLoading) return
 
@@ -97,6 +101,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Inicia el sensor de pasos o marca las métricas como simuladas en el emulador. */
     private fun iniciarCapturaDePasos() {
         stepJob?.cancel()
 
@@ -125,6 +130,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Obtiene una primera coordenada para centrar el mapa antes de iniciar. */
     fun cargarUbicacionInicial() {
         if (_uiState.value.ubicacionActual != null || _uiState.value.estaActivo) return
 
@@ -148,6 +154,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Suscribe el entrenamiento al flujo de ubicaciones GPS en tiempo real. */
     private fun iniciarCapturaDeUbicacion() {
         locationJob?.cancel()
         locationJob = viewModelScope.launch {
@@ -164,6 +171,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Incrementa cada segundo el tiempo transcurrido de la sesión activa. */
     private fun iniciarCronometro() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
@@ -176,6 +184,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Filtra saltos GPS y actualiza ruta, distancia, pasos y calorías. */
     private fun registrarUbicacion(location: Location) {
         if (!_uiState.value.estaActivo) return
         if (System.currentTimeMillis() - location.time > MAX_LOCATION_AGE_MILLIS) return
@@ -254,6 +263,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Estima las calorías con base en el peso del usuario y la distancia recorrida. */
     private fun estimarCalorias(distanciaKm: Double): Int =
         (pesoKg * distanciaKm * CALORIES_PER_KG_KM).roundToInt()
 
@@ -266,6 +276,7 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Detiene la sesión, envía sus métricas y guarda la ruta completa en el backend. */
     fun finalizar() {
         val state = _uiState.value
         val idEntrenamiento = state.idEntrenamiento ?: return
@@ -309,10 +320,12 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    /** Elimina el error actual después de que la pantalla lo haya mostrado. */
     fun limpiarError() {
         _uiState.update { it.copy(error = null) }
     }
 
+    /** Cancela todos los trabajos de GPS, pasos, ubicación inicial y cronómetro. */
     private fun detenerCaptura() {
         initialLocationJob?.cancel()
         initialLocationJob = null
@@ -324,11 +337,13 @@ class EntrenamientoViewModel(application: Application) : AndroidViewModel(applic
         stepJob = null
     }
 
+    /** Libera las capturas activas cuando el ViewModel deja de estar disponible. */
     override fun onCleared() {
         detenerCaptura()
         super.onCleared()
     }
 
+    /** Reúne límites de filtrado GPS y factores usados en las estimaciones. */
     private companion object {
         const val MAX_LOCATION_AGE_MILLIS = 15_000L
         // El emulador puede saltar desde su última posición al punto A al reproducir

@@ -51,6 +51,7 @@ import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.theme.SurfaceVariant
 import mx.utng.cala.rutalibre.ui.theme.Warning
 
+/** Explica el propósito de Ruta Libre, sus métricas y recomendaciones de uso. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AcercaDeLaAppScreen(navController: NavController) {
@@ -169,6 +170,7 @@ fun AcercaDeLaAppScreen(navController: NavController) {
     }
 }
 
+/** Muestra la fórmula aproximada usada para estimar calorías. */
 @Composable
 private fun FormulaCaloriasCard() {
     Card(
@@ -266,6 +268,7 @@ private fun FormulaCaloriasCard() {
     }
 }
 
+/** Presenta un aviso informativo o preventivo dentro de la pantalla acerca de la app. */
 @Composable
 private fun AvisoCard(
     icono: ImageVector,

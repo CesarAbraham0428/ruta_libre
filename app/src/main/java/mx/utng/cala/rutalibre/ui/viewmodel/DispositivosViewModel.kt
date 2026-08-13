@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.dto.response.DispositivoResponse
 import mx.utng.cala.core.data.repository.DispositivoRepository
 
+/** Estado de carga, listado y operaciones sobre dispositivos vinculados. */
 data class DispositivosUiState(
     val cargando: Boolean = false,
     val dispositivos: List<DispositivoResponse> = emptyList(),
@@ -15,11 +16,13 @@ data class DispositivosUiState(
     val sesionesCerradas: Boolean = false
 )
 
+/** Gestiona la consulta y revocación de dispositivos asociados a la cuenta. */
 class DispositivosViewModel : ViewModel() {
     private val repository = DispositivoRepository()
     private val _uiState = MutableStateFlow(DispositivosUiState())
     val uiState: StateFlow<DispositivosUiState> = _uiState
 
+    /** Obtiene del backend los dispositivos vinculados al usuario autenticado. */
     fun cargar(token: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(cargando = true, error = null)
@@ -30,6 +33,7 @@ class DispositivosViewModel : ViewModel() {
         }
     }
 
+    /** Desvincula un dispositivo y actualiza el listado al terminar. */
     fun desvincular(token: String, idDispositivo: String) {
         viewModelScope.launch {
             repository.desvincular(token, idDispositivo).fold(
@@ -39,6 +43,7 @@ class DispositivosViewModel : ViewModel() {
         }
     }
 
+    /** Solicita el cierre de todas las sesiones activas de dispositivos. */
     fun cerrarTodas(token: String) {
         viewModelScope.launch {
             repository.cerrarTodasLasSesiones(token).fold(
@@ -48,6 +53,7 @@ class DispositivosViewModel : ViewModel() {
         }
     }
 
+    /** Consume la notificación de cierre masivo para evitar mostrarla repetidamente. */
     fun consumirCierreDeSesiones() {
         _uiState.value = _uiState.value.copy(sesionesCerradas = false)
     }

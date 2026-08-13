@@ -13,6 +13,7 @@ import mx.utng.cala.rutalibre.BuildConfig
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+/** Estados posibles de la conexión MQTT del usuario. */
 enum class MqttConnectionStatus {
     DISCONNECTED,
     CONNECTING,
@@ -20,16 +21,19 @@ enum class MqttConnectionStatus {
     ERROR
 }
 
+/** Estado observable de la conexión MQTT y su posible mensaje de error. */
 data class MqttConnectionState(
     val status: MqttConnectionStatus = MqttConnectionStatus.DISCONNECTED,
     val error: String? = null
 )
 
+/** Mensaje MQTT recibido desde el tópico asociado con el usuario. */
 data class MqttEvent(
     val topic: String,
     val payload: String
 )
 
+/** Administra la conexión segura a HiveMQ y distribuye eventos en tiempo real. */
 class MqttManager {
     private val _connectionState = MutableStateFlow(MqttConnectionState())
     val connectionState: StateFlow<MqttConnectionState> = _connectionState
@@ -40,6 +44,7 @@ class MqttManager {
     private var client: Mqtt3AsyncClient? = null
     private var currentUserId: Int? = null
 
+    /** Conecta al broker, autentica la cuenta y suscribe sus eventos personales. */
     fun connect(userId: Int) {
         if (currentUserId == userId && client?.state == MqttClientState.CONNECTED) return
 
@@ -89,6 +94,7 @@ class MqttManager {
             }
     }
 
+    /** Suscribe el cliente al árbol de tópicos del usuario y publica los mensajes recibidos. */
     private fun subscribeToUser(mqttClient: Mqtt3AsyncClient, userId: Int) {
         mqttClient.subscribeWith()
             .topicFilter("rutalibre/usuarios/$userId/#")
@@ -118,6 +124,7 @@ class MqttManager {
             }
     }
 
+    /** Cierra la conexión MQTT actual y restablece el estado desconectado. */
     fun disconnect() {
         val currentClient = client
         client = null

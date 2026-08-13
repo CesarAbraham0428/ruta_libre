@@ -41,6 +41,7 @@ import mx.utng.cala.rutalibre.ui.theme.Primary
 import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 
+/** Muestra el formulario de acceso y dirige al usuario según su sesión y perfil. */
 @Composable
 fun LoginScreen(
     navController: NavController,

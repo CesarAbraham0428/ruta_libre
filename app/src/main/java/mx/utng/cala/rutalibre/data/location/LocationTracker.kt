@@ -13,6 +13,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+/** Expone actualizaciones GPS filtradas para registrar el recorrido del entrenamiento. */
 class LocationTracker(context: Context) {
     private val client = LocationServices.getFusedLocationProviderClient(context)
 
@@ -24,9 +25,11 @@ class LocationTracker(context: Context) {
         .setMinUpdateDistanceMeters(MIN_DISTANCE_METERS)
         .build()
 
+    /** Inicia el seguimiento de ubicación y lo detiene al cancelar el flujo consumidor. */
     @SuppressLint("MissingPermission")
     fun locations(): Flow<Location> = callbackFlow {
         val callback = object : LocationCallback() {
+            /** Publica únicamente ubicaciones cuya precisión está dentro del límite aceptado. */
             override fun onLocationResult(result: LocationResult) {
                 result.locations.forEach { location ->
                     if (location.accuracy <= MAX_ACCEPTED_ACCURACY_METERS) {
@@ -42,6 +45,7 @@ class LocationTracker(context: Context) {
         awaitClose { client.removeLocationUpdates(callback) }
     }
 
+    /** Define los intervalos y filtros de calidad aplicados al GPS. */
     private companion object {
         const val LOCATION_INTERVAL_MILLIS = 2_000L
         const val FASTEST_INTERVAL_MILLIS = 1_000L

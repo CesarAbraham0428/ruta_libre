@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import mx.utng.cala.core.data.repository.DispositivoRepository
 
+/** Estado del proceso de vinculación de una TV mediante código temporal. */
 data class VincularDispositivoUiState(
     val cargando: Boolean = false,
     val vinculado: Boolean = false,
@@ -14,15 +15,18 @@ data class VincularDispositivoUiState(
     val error: String? = null
 )
 
+/** Coordina la validación y vinculación de dispositivos desde la app móvil. */
 class VincularDispositivoViewModel : ViewModel() {
     private val repository = DispositivoRepository()
     private val _uiState = MutableStateFlow(VincularDispositivoUiState())
     val uiState: StateFlow<VincularDispositivoUiState> = _uiState
 
+    /** Restablece el formulario y los mensajes de una vinculación anterior. */
     fun reiniciar() {
         _uiState.value = VincularDispositivoUiState()
     }
 
+    /** Normaliza el código y solicita al backend asociar la TV a la cuenta. */
     fun vincular(token: String, codigo: String) {
         val normalized = codigo.trim().uppercase()
         if (normalized.length != 6) {

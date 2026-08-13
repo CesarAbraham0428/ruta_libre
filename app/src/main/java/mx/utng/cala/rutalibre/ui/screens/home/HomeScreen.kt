@@ -35,6 +35,7 @@ import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.data.mqtt.MqttConnectionStatus
 
+/** Presenta el tablero principal con accesos a las funciones de Ruta Libre. */
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -238,6 +239,7 @@ fun HomeScreen(
     }
 }
 
+/** Construye una tarjeta reutilizable para una acción del tablero principal. */
 @Composable
 private fun TarjetaHome(
     titulo: String,

@@ -34,6 +34,7 @@ import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.DispositivosViewModel
 
+/** Lista dispositivos vinculados y ofrece acciones para desvincularlos o cerrar sesiones. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DispositivosScreen(

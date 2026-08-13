@@ -25,6 +25,7 @@ import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.GrupoViewModel
 
+/** Muestra los grupos del usuario y los diálogos para crear o unirse a uno. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GruposScreen(

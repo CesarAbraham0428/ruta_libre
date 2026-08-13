@@ -29,6 +29,7 @@ private val tipoMetaConfig = mapOf(
     "TIEMPO" to TipoMetaInfoEdit(Icons.Default.AccessTime, "Tiempo de actividad", Tiempo, "min")
 )
 
+/** Permite modificar el valor objetivo de una meta existente. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditarMetaScreen(
@@ -250,6 +251,7 @@ fun EditarMetaScreen(
     }
 }
 
+/** Contiene la presentación de una meta durante el formulario de edición. */
 private data class TipoMetaInfoEdit(
     val icon: ImageVector,
     val displayName: String,

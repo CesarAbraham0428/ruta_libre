@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import mx.utng.cala.rutalibre.ui.theme.Background
 import mx.utng.cala.rutalibre.ui.viewmodel.VincularDispositivoViewModel
 
+/** Permite asociar una TV a la cuenta mediante el código mostrado en ese dispositivo. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VincularDispositivoScreen(

@@ -36,6 +36,7 @@ private val tipoMetaIcons = mapOf(
     "TIEMPO" to MetaTypeInfo(Icons.Default.AccessTime, Tiempo, "min")
 )
 
+/** Muestra las metas activas e históricas y permite gestionarlas. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetasScreen(
@@ -234,6 +235,7 @@ fun MetasScreen(
     }
 }
 
+/** Renderiza una meta con su progreso y acciones disponibles. */
 @Composable
 fun MetaCard(
     meta: MetaResponse,
@@ -339,6 +341,7 @@ fun MetaCard(
     }
 }
 
+/** Agrupa la etiqueta, unidad, color e icono visual de un tipo de meta. */
 private data class MetaTypeInfo(
     val icon: ImageVector,
     val color: androidx.compose.ui.graphics.Color,

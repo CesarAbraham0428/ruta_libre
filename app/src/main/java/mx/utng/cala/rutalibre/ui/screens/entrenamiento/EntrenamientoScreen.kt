@@ -88,6 +88,7 @@ import java.util.Locale
 private const val ROUTE_SOURCE_ID = "ruta-libre-source"
 private const val ROUTE_LAYER_ID = "ruta-libre-layer"
 
+/** Controla la sesión de entrenamiento y muestra mapa, métricas y acciones. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntrenamientoScreen(
@@ -118,6 +119,7 @@ fun EntrenamientoScreen(
         iniciarTrasPermiso = false
     }
 
+    /** Solicita la ubicación necesaria y comienza el entrenamiento cuando está disponible. */
     fun iniciarConPermiso() {
         val fineGranted = ContextCompat.checkSelfPermission(
             context,
@@ -334,6 +336,7 @@ fun EntrenamientoScreen(
     }
 }
 
+/** Renderiza el mapa, la polilínea de la ruta y la ubicación actual del usuario. */
 @Composable
 private fun MapaDeEntrenamiento(
     ruta: List<Coordenada>,
@@ -373,10 +376,12 @@ private fun MapaDeEntrenamiento(
     var mapReady by remember { mutableStateOf(false) }
     val delegate = remember {
         object : MTMapViewDelegate {
+            /** Configura el estilo y la cámara cuando MapTiler termina de inicializarse. */
             override fun onMapViewInitialized() {
                 mapReady = true
             }
 
+            /** Ignora eventos del mapa que no requieren una acción en la pantalla. */
             override fun onEventTriggered(event: MTEvent, data: MTData?) = Unit
         }
     }
@@ -488,6 +493,7 @@ private fun MapaDeEntrenamiento(
     }
 }
 
+/** Dibuja el marcador de la ubicación actual sobre el mapa. */
 @Composable
 private fun RouteMarker(
     controller: MTMapViewController,
@@ -529,6 +535,7 @@ private fun RouteMarker(
     }
 }
 
+/** Presenta una métrica del entrenamiento con icono, valor y unidad. */
 @Composable
 private fun MetricCard(
     label: String,
@@ -555,11 +562,13 @@ private fun MetricCard(
     }
 }
 
+/** Convierte las coordenadas de la ruta al GeoJSON usado por MapTiler. */
 private fun List<Coordenada>.toGeoJson(): String {
     val coordinates = joinToString(separator = ",") { "[${it.longitud},${it.latitud}]" }
     return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coordinates]},"properties":{}}"""
 }
 
+/** Convierte los segundos transcurridos al formato HH:mm:ss. */
 private fun formatTime(totalSeconds: Int): String {
     val hours = totalSeconds / 3_600
     val minutes = (totalSeconds % 3_600) / 60

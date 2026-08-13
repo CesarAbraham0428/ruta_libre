@@ -23,6 +23,7 @@ private val DarkColorScheme = darkColorScheme(
     error = Error
 )
 
+/** Aplica la paleta, tipografía y configuración visual de Ruta Libre a su contenido. */
 @Composable
 fun RutaLibreTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

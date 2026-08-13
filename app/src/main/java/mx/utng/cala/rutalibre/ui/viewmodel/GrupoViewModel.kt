@@ -10,6 +10,7 @@ import mx.utng.cala.core.data.dto.response.GrupoResponse
 import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 import mx.utng.cala.core.data.repository.GrupoRepository
 
+/** Estado de grupos, miembros, ranking y operaciones en curso. */
 data class EstadoUiGrupos(
     val listaGrupos: List<GrupoResponse> = emptyList(),
     val listaMiembros: List<MiembroGrupoResponse> = emptyList(),
@@ -18,12 +19,14 @@ data class EstadoUiGrupos(
     val mensajeError: String? = null
 )
 
+/** Coordina la consulta, creación, unión y salida de grupos deportivos. */
 class GrupoViewModel : ViewModel() {
 
     private val repository = GrupoRepository()
     private val _estadoUi = MutableStateFlow(EstadoUiGrupos())
     val estadoUi: StateFlow<EstadoUiGrupos> = _estadoUi
 
+    /** Carga los grupos a los que pertenece el usuario. */
     fun cargarGruposDeUsuario(idUsuario: Int) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true, mensajeError = null)
@@ -40,6 +43,7 @@ class GrupoViewModel : ViewModel() {
         }
     }
 
+    /** Crea un grupo y vuelve a cargar la lista del creador. */
     fun crearNuevoGrupo(nombre: String, descripcion: String?, idCreador: Int) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true, mensajeError = null)
@@ -50,6 +54,7 @@ class GrupoViewModel : ViewModel() {
         }
     }
 
+    /** Une al usuario a un grupo mediante su código de invitación. */
     fun unirseAGrupoConCodigo(idUsuario: Int, codigo: String) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true, mensajeError = null)
@@ -60,6 +65,7 @@ class GrupoViewModel : ViewModel() {
         }
     }
 
+    /** Obtiene en paralelo los miembros y el ranking de un grupo. */
     fun cargarDetalleGrupo(idGrupo: Int) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(
@@ -86,6 +92,7 @@ class GrupoViewModel : ViewModel() {
         }
     }
 
+    /** Retira al usuario del grupo y ejecuta una acción posterior si tiene éxito. */
     fun salirDeGrupo(idUsuario: Int, idGrupo: Int, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             _estadoUi.value = _estadoUi.value.copy(estaCargando = true, mensajeError = null)
@@ -102,10 +109,12 @@ class GrupoViewModel : ViewModel() {
         }
     }
 
+    /** Limpia el error de la operación de grupos actualmente visible. */
     fun limpiarError() {
         _estadoUi.value = _estadoUi.value.copy(mensajeError = null)
     }
 
+    /** Convierte una excepción en un estado de error comprensible para la UI. */
     private fun mostrarError(error: Throwable) {
         _estadoUi.value = _estadoUi.value.copy(
             estaCargando = false,

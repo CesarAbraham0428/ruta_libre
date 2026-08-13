@@ -43,6 +43,7 @@ import com.google.android.gms.wearable.Wearable
 import mx.utng.cala.core.data.repository.DispositivoRepository
 
 @Composable
+/** Declara las pantallas, argumentos y efectos globales de navegación de la app móvil. */
 fun NavGraph(navController: NavHostController) {
     val authViewModel: AuthViewModel = viewModel()
     val metasViewModel: MetasViewModel = viewModel()

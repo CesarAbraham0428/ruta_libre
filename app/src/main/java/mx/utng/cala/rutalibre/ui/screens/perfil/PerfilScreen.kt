@@ -37,6 +37,7 @@ import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 import mx.utng.cala.rutalibre.ui.viewmodel.PerfilViewModel
 
+/** Muestra y permite editar los datos personales de la cuenta autenticada. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
@@ -376,6 +377,7 @@ fun PerfilScreen(
     }
 }
 
+/** Indica visualmente si un requisito de contraseña se encuentra cumplido. */
 @Composable
 private fun RequisitoContrasena(texto: String, cumplido: Boolean) {
     Row(

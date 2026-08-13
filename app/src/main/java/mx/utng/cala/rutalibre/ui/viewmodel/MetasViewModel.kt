@@ -9,6 +9,7 @@ import mx.utng.cala.core.data.dto.response.MetaResponse
 import mx.utng.cala.core.data.model.TipoMeta
 import mx.utng.cala.core.data.repository.MetaRepository
 
+/** Estado de las metas del usuario y de las operaciones CRUD en curso. */
 data class MetasUiState(
     val isLoading: Boolean = false,
     val metas: List<MetaResponse> = emptyList(),
@@ -18,12 +19,14 @@ data class MetasUiState(
     val error: String? = null
 )
 
+/** Administra la consulta, creación, edición y eliminación de metas personales. */
 class MetasViewModel : ViewModel() {
 
     private val repository = MetaRepository()
     private val _uiState = MutableStateFlow(MetasUiState())
     val uiState: StateFlow<MetasUiState> = _uiState
 
+    /** Carga las metas registradas para el usuario. */
     fun cargarMetas(idUsuario: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -34,6 +37,7 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+    /** Crea una meta y actualiza el listado al terminar correctamente. */
     fun crearMeta(idUsuario: Int, tipo: TipoMeta, valor: Double) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaCreated = false)
@@ -47,6 +51,7 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+    /** Cambia el valor objetivo de una meta existente. */
     fun editarMeta(idUsuario: Int, idMetas: Int, nuevoValor: Double) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaUpdated = false)
@@ -60,6 +65,7 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+    /** Elimina una meta y refresca las metas restantes del usuario. */
     fun eliminarMeta(idUsuario: Int, idMetas: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, isMetaDeleted = false)
@@ -73,18 +79,22 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+    /** Limpia el error de la última operación de metas. */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    /** Consume la bandera que indica que una meta fue creada. */
     fun resetMetaCreatedState() {
         _uiState.value = _uiState.value.copy(isMetaCreated = false)
     }
 
+    /** Consume la bandera que indica que una meta fue actualizada. */
     fun resetMetaUpdatedState() {
         _uiState.value = _uiState.value.copy(isMetaUpdated = false)
     }
 
+    /** Consume la bandera que indica que una meta fue eliminada. */
     fun resetMetaDeletedState() {
         _uiState.value = _uiState.value.copy(isMetaDeleted = false)
     }

@@ -37,9 +37,15 @@ class DashboardViewModel : ViewModel() {
     /** Solicita y publica los totales diarios de la semana actual. */
     fun cargarDashboardSemanal(idUsuario: Int) {
         viewModelScope.launch {
-            _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
+            _estadoUi.value = _estadoUi.value.copy(estaCargando = true, error = null)
             repositorio.getDashboardSemanal(idUsuario).fold(
-                onSuccess = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, semanal = it) },
+                onSuccess = {
+                    _estadoUi.value = _estadoUi.value.copy(
+                        estaCargando = false,
+                        semanal = it,
+                        error = null
+                    )
+                },
                 onFailure = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, error = it.message) }
             )
         }
@@ -50,7 +56,8 @@ class DashboardViewModel : ViewModel() {
         viewModelScope.launch {
             repositorio.getComparacion(idUsuario).fold(
                 onSuccess = { _estadoUi.value = _estadoUi.value.copy(comparacionSemanal = it) },
-                onFailure = { _estadoUi.value = _estadoUi.value.copy(error = it.message) }
+                // La comparacion es complementaria: si falla, se mantienen las metricas principales.
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(comparacionSemanal = null) }
             )
         }
     }
@@ -58,9 +65,15 @@ class DashboardViewModel : ViewModel() {
     /** Solicita y publica los totales agrupados del mes actual. */
     fun cargarDashboardMensual(idUsuario: Int) {
         viewModelScope.launch {
-            _estadoUi.value = _estadoUi.value.copy(estaCargando = true)
+            _estadoUi.value = _estadoUi.value.copy(estaCargando = true, error = null)
             repositorio.obtenerDashboardMensual(idUsuario).fold(
-                onSuccess = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, mensual = it) },
+                onSuccess = {
+                    _estadoUi.value = _estadoUi.value.copy(
+                        estaCargando = false,
+                        mensual = it,
+                        error = null
+                    )
+                },
                 onFailure = { _estadoUi.value = _estadoUi.value.copy(estaCargando = false, error = it.message) }
             )
         }
@@ -71,7 +84,7 @@ class DashboardViewModel : ViewModel() {
         viewModelScope.launch {
             repositorio.obtenerComparacionMensual(idUsuario).fold(
                 onSuccess = { _estadoUi.value = _estadoUi.value.copy(comparacionMensual = it) },
-                onFailure = { _estadoUi.value = _estadoUi.value.copy(error = it.message) }
+                onFailure = { _estadoUi.value = _estadoUi.value.copy(comparacionMensual = null) }
             )
         }
     }
@@ -86,5 +99,10 @@ class DashboardViewModel : ViewModel() {
             cargarDashboardMensual(idUsuario)
             cargarComparacionMensual(idUsuario)
         }
+    }
+
+    /** Repite las consultas visibles despues de recuperar la cobertura Wi-Fi. */
+    fun reintentar(idUsuario: Int) {
+        cambiarPeriodo(_estadoUi.value.periodoSeleccionado, idUsuario)
     }
 }

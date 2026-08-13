@@ -42,6 +42,7 @@ import mx.utng.cala.rutalibre.ui.theme.Primary
 import mx.utng.cala.rutalibre.ui.theme.Surface
 import mx.utng.cala.rutalibre.ui.viewmodel.AuthViewModel
 
+/** Muestra el registro de cuenta con validación visual de la contraseña. */
 @Composable
 fun RegisterScreen(
     navController: NavController,
@@ -336,6 +337,7 @@ fun RegisterScreen(
     }
 }
 
+/** Renderiza un requisito de contraseña y señala si ya se cumple. */
 @Composable
 private fun PasswordRequirement(text: String, satisfied: Boolean) {
     Row(

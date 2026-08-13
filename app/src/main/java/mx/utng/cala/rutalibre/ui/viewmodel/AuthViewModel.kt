@@ -10,6 +10,7 @@ import mx.utng.cala.core.data.repository.AuthRepository
 import mx.utng.cala.rutalibre.data.auth.AuthSession
 import mx.utng.cala.rutalibre.data.auth.AuthSessionStore
 
+/** Estado de autenticación que consume la interfaz móvil. */
 data class AuthUiState(
     val isLoading: Boolean = false,
     val isLoggedIn: Boolean = false,
@@ -21,6 +22,7 @@ data class AuthUiState(
     val error: String? = null
 )
 
+/** Coordina inicio de sesión, registro y persistencia de la cuenta activa. */
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = AuthRepository()
@@ -38,6 +40,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     )
     val uiState: StateFlow<AuthUiState> = _uiState
 
+    /** Autentica al usuario y guarda el token recibido si las credenciales son válidas. */
     fun login(usuario: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -59,6 +62,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Registra una cuenta nueva y notifica a la pantalla el resultado de la operación. */
     fun register(nombre: String, usuario: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, registrationSuccess = false)
@@ -69,29 +73,35 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Limpia el mensaje de error mostrado por la interfaz. */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    /** Restablece la bandera de registro exitoso después de consumirla. */
     fun resetRegistrationState() {
         _uiState.value = _uiState.value.copy(registrationSuccess = false)
     }
 
+    /** Actualiza el nombre local y sincroniza el cambio con la sesión persistida. */
     fun actualizarNombreLocal(nuevoNombre: String) {
         _uiState.value = _uiState.value.copy(nombre = nuevoNombre)
         persistSession(_uiState.value)
     }
 
+    /** Actualiza el peso local y lo conserva junto con la sesión autenticada. */
     fun actualizarPesoLocal(nuevoPesoKg: Double) {
         _uiState.value = _uiState.value.copy(pesoKg = nuevoPesoKg)
         persistSession(_uiState.value)
     }
 
+    /** Borra la sesión local y devuelve el estado de autenticación a su valor inicial. */
     fun cerrarSesion() {
         sessionStore.clear()
         _uiState.value = AuthUiState()
     }
 
+    /** Persiste una sesión solo cuando contiene identificador, nombre y token válidos. */
     private fun persistSession(state: AuthUiState) {
         val idUsuario = state.idUsuario ?: return
         val nombre = state.nombre ?: return

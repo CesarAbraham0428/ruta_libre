@@ -62,6 +62,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Lista los entrenamientos guardados y permite abrir su resumen detallado. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialScreen(
@@ -148,6 +149,7 @@ fun HistorialScreen(
     }
 }
 
+/** Construye la tarjeta resumida de un entrenamiento del historial. */
 @Composable
 private fun HistorialCard(entrenamiento: EntrenamientoResponse, onClick: () -> Unit) {
     Card(
@@ -191,6 +193,7 @@ private fun HistorialCard(entrenamiento: EntrenamientoResponse, onClick: () -> U
     }
 }
 
+/** Muestra un valor pequeño de métrica con su icono y color asociado. */
 @Composable
 private fun MiniMetric(icon: ImageVector, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -199,9 +202,11 @@ private fun MiniMetric(icon: ImageVector, value: String, color: Color) {
     }
 }
 
+/** Formatea una distancia en kilómetros con dos decimales. */
 internal fun formatDistance(distance: Double): String =
     String.format(Locale.US, "%.2f km", distance)
 
+/** Convierte una duración en segundos al formato de horas, minutos y segundos. */
 internal fun formatDuration(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
@@ -210,6 +215,7 @@ internal fun formatDuration(totalSeconds: Int): String {
     else "%02d:%02d".format(minutes, seconds)
 }
 
+/** Convierte una fecha ISO del backend a un formato legible para la UI. */
 internal fun formatDate(value: String): String = try {
     val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy, HH:mm", Locale("es", "MX"))
     Instant.parse(value).atZone(ZoneId.systemDefault()).format(formatter)

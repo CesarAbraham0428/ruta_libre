@@ -31,6 +31,7 @@ import mx.utng.cala.rutalibre.ui.theme.*
 import mx.utng.cala.rutalibre.ui.viewmodel.GrupoViewModel
 import mx.utng.cala.core.data.dto.response.MiembroGrupoResponse
 
+/** Presenta estadísticas, ranking y miembros de un grupo deportivo. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleGrupoScreen(
@@ -405,6 +406,7 @@ fun DetalleGrupoScreen(
     */
 }
 
+/** Muestra una métrica acumulada por todos los integrantes del grupo. */
 @Composable
 fun TarjetaMetricaGrupal(
     titulo: String,
@@ -450,6 +452,7 @@ fun TarjetaMetricaGrupal(
     }
 }
 
+/** Representa una fila del ranking con posición, usuario y rendimiento. */
 @Composable
 fun FilaRankingMiembro(
     posicion: Int,

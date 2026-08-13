@@ -15,6 +15,8 @@ object RetrofitClient {
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .callTimeout(90, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .addInterceptor(TransientHttpRetryInterceptor())
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()

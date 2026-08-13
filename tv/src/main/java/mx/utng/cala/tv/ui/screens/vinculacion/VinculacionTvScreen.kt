@@ -47,13 +47,15 @@ fun VinculacionTvScreen(state: TvPairingUiState, onRetry: () -> Unit) {
             color = Color(0xFF78E04F)
         )
         state.error?.let {
-            Spacer(Modifier.height(20.dp))
-            Text(it, color = Color(0xFFFF6B6B))
+            Spacer(Modifier.height(14.dp))
+            Text(it, color = Color(0xFFFF6B6B), textAlign = TextAlign.Center)
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onRetry,
                 scale = ButtonDefaults.scale(focusedScale = 1.0f)
-            ) { Text("Generar otro código") }
+            ) {
+                Text(if (state.codigo == null) "Reintentar ahora" else "Generar otro código")
+            }
         }
     }
 }
